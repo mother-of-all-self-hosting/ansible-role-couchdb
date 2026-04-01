@@ -273,14 +273,13 @@ couchdb_config_extension: ""
 #       names:
 #         - user1
 #       roles: []
-couchdb_tables_custom: []
+couchdb_tables: "{{ couchdb_tables_default + couchdb_tables_auto + couchdb_tables_custom }}"
 couchdb_tables_default:
   - name: "_users"
   - name: "_replicator"
   - name: "_global_changes"
-
 couchdb_tables_auto: []
-couchdb_tables: "{{ couchdb_tables_default + couchdb_tables_auto + couchdb_tables_custom }}"
+couchdb_tables_custom: []
 
 # Define users
 # couchdb_users_custom:
@@ -288,9 +287,9 @@ couchdb_tables: "{{ couchdb_tables_default + couchdb_tables_auto + couchdb_table
 #   password: password1
 #   roles: []
 #   type: user
+couchdb_users: "{{ couchdb_users_auto + couchdb_users_custom }}"
 couchdb_users_auto: []
 couchdb_users_custom: []
-couchdb_users: "{{ couchdb_users_auto + couchdb_users_custom }}"
 
 # Define default database permissions, if not defined in `couchdb_tables_custom`
 couchdb_default_permissions:
