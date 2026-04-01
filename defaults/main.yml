@@ -218,32 +218,29 @@ couchdb_container_cleanup_command: |
   echo "Failed to remove stale container {{ couchdb_identifier }} after {{ couchdb_container_cleanup_timeout_seconds }} attempts" >&2;
   exit 1
 
-couchdb_admin_user: "mash-admin"
-couchdb_admin_passwd: ""
-couchdb_admins_auto:
-  - user: "{{ couchdb_admin_user }}"
-    password: "{{ couchdb_admin_passwd }}"
-
-# Define admin users
-# example:
-# - user: admin
-#   password: "P@ssw0rd"
-couchdb_admins_custom: []
-couchdb_admins: "{{ couchdb_admins_auto + couchdb_admins_custom }}"
-
-couchdb_config_couch_chttpd_auth_secret: ""
-couchdb_config_uuid: ""
-
-# enable CouchDB single node mode, to automatically create system databases
+# Control if CouchDB single node mode is enabled
 couchdb_config_single_node: true
 
-couchdb_config_extension: ""
+couchdb_config_uuid: ""
+
+couchdb_config_peruser_enabled: true
+
+couchdb_config_require_valid_user_except_for_up: true
 
 # See options: https://docs.couchdb.org/en/stable/config/logging.html#log/level
 couchdb_config_loglevel: error
 
-couchdb_config_peruser_enabled: true
-couchdb_config_require_valid_user_except_for_up: true
+couchdb_admin_user: ""
+couchdb_admin_passwd: ""
+couchdb_admins_auto:
+  - user: "{{ couchdb_admin_user }}"
+    password: "{{ couchdb_admin_passwd }}"
+couchdb_admins_custom: []
+couchdb_admins: "{{ couchdb_admins_auto + couchdb_admins_custom }}"
+
+couchdb_config_couch_chttpd_auth_secret: ""
+
+couchdb_config_extension: ""
 
 # Define tables
 # couchdb_tables_custom:
