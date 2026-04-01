@@ -218,11 +218,11 @@ couchdb_container_cleanup_command: |
   echo "Failed to remove stale container {{ couchdb_identifier }} after {{ couchdb_container_cleanup_timeout_seconds }} attempts" >&2;
   exit 1
 
-couchdb_admin_user: 'mash-admin'
-couchdb_admin_passwd: ''
+couchdb_admin_user: "mash-admin"
+couchdb_admin_passwd: ""
 couchdb_admins_auto:
-    - user: "{{ couchdb_admin_user }}"
-      password: "{{ couchdb_admin_passwd }}"
+  - user: "{{ couchdb_admin_user }}"
+    password: "{{ couchdb_admin_passwd }}"
 
 # Define admin users
 # example:
@@ -231,14 +231,13 @@ couchdb_admins_auto:
 couchdb_admins_custom: []
 couchdb_admins: "{{ couchdb_admins_auto + couchdb_admins_custom }}"
 
-couchdb_config_couch_chttpd_auth_secret: ''
-couchdb_config_uuid: ''
-
+couchdb_config_couch_chttpd_auth_secret: ""
+couchdb_config_uuid: ""
 
 # enable CouchDB single node mode, to automatically create system databases
 couchdb_config_single_node: true
 
-couchdb_config_extension: ''
+couchdb_config_extension: ""
 
 # See options: https://docs.couchdb.org/en/stable/config/logging.html#log/level
 couchdb_config_loglevel: error
@@ -259,12 +258,11 @@ couchdb_config_require_valid_user_except_for_up: true
 #       roles: []
 couchdb_tables_custom: []
 couchdb_tables_default:
-    - name: "_users"
-    - name: "_replicator"
-    - name: "_global_changes"
+  - name: "_users"
+  - name: "_replicator"
+  - name: "_global_changes"
 
 couchdb_tables_auto: []
-
 couchdb_tables: "{{ couchdb_tables_default + couchdb_tables_auto + couchdb_tables_custom }}"
 
 # Define users
@@ -279,12 +277,12 @@ couchdb_users: "{{ couchdb_users_auto + couchdb_users_custom }}"
 
 # Define default database permissions, if not defined in `couchdb_tables_custom`
 couchdb_default_permissions:
-    admins:
-        names: []
-        roles: []
-    members:
-        names: []
-        roles: []
+  admins:
+    names: []
+    roles: []
+  members:
+    names: []
+    roles: []
 
 # Specify the timezone
 couchdb_environment_variables_tz: UTC
