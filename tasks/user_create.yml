@@ -1,0 +1,61 @@
+# SPDX-FileCopyrightText: 2024 Bergrübe
+# SPDX-FileCopyrightText: 2026 Suguru Hirahara
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+# The command to create users: `ansible-playbook -i inventory/hosts setup.yml --tags=create-user-couchdb`
+
+- name: Ensure CouchDB service is started
+  ansible.builtin.service:
+    name: "{{ couchdb_identifier }}"
+    state: started
+    daemon_reload: true
+  register: couchdb_start
+
+- name: Wait a while, so that CouchDB can manage to start
+  ansible.builtin.pause:
+    seconds: 7
+  when: couchdb_start.changed | bool
+
+- name: Ensure CouchDB system tables are created
+  ansible.builtin.command:
+    cmd: |-
+      {{ devture_systemd_docker_base_host_command_docker }} exec
+      {{ couchdb_identifier }}
+      curl -X PUT http://{{ couchdb_root_username }}:{{ couchdb_root_password }}@localhost:5984/{{ item.name }}
+  register: couchdb_tables_output
+  changed_when: couchdb_tables_output.stdout.find('{"ok":true}') != -1
+  failed_when: couchdb_tables_output.stdout.find('{"ok":true}') == -1 and couchdb_tables_output.stdout.find('"file_exists"') == -1
+  loop: "{{ couchdb_tables }}"
+
+- name: Create CouchDB users
+  ansible.builtin.command:
+    cmd: |-
+      {{ devture_systemd_docker_base_host_command_docker }} exec
+      {{ couchdb_identifier }}
+      curl -X PUT http://{{ couchdb_root_username }}:{{ couchdb_root_password }}@localhost:5984/_users/org.couchdb.user:{{ item.name }}
+      -H 'Accept: application/json'
+      -H 'Content-Type: application/json'
+      -d '{{ item | to_json }}'
+  register: couchdb_users_output
+  changed_when: couchdb_users_output.stdout.find('{"ok":true}') != -1
+  no_log: true # do not log the password
+  ignore_errors: true # Ignore errors if user already exists
+  loop: "{{ couchdb_users }}"
+  when: couchdb_users | length > 0
+
+- name: Ensure CouchDB database permissions are set
+  ansible.builtin.command:
+    cmd: |-
+      {{ devture_systemd_docker_base_host_command_docker }} exec
+      {{ couchdb_identifier }}
+      curl -X PUT http://{{ couchdb_root_username }}:{{ couchdb_root_password }}@localhost:5984/{{ item.name }}/_security
+      -H "Accept: application/json"
+      -H "Content-Type: application/json"
+      -d '{{ item.permission | default(couchdb_default_permissions) | to_json }}'
+  register: couchdb_db_permissions_output
+  changed_when: couchdb_db_permissions_output.stdout.find('{"ok":true}') != -1
+  failed_when: couchdb_db_permissions_output.stdout.find('{"error"') != -1
+  loop: "{{ (couchdb_tables_custom | union(couchdb_tables_auto)) }}"
+  when: (couchdb_tables_custom | union(couchdb_tables_auto)) | length > 0
