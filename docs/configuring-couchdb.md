@@ -18,11 +18,11 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # Setting up CouchDB
 
-This is an [Ansible](https://www.ansible.com/) role which installs [CouchDB](https://docs.couchdb.io) to run as a [Docker](https://www.docker.com/) container wrapped in a systemd service.
+This is an [Ansible](https://www.ansible.com/) role which installs [CouchDB](https://couchdb.apache.org/) to run as a [Docker](https://www.docker.com/) container wrapped in a systemd service.
 
-CouchDB allows to deploy headless browsers in Docker.
+CouchDB is a document-oriented NoSQL database which uses JSON to store data.
 
-See the project's [documentation](https://docs.couchdb.io/enterprise/quick-start) to learn what CouchDB does and why it might be useful to you.
+See the project's [documentation](https://docs.couchdb.org/en/stable/) to learn what CouchDB does and why it might be useful to you.
 
 ## Adjusting the playbook configuration
 
@@ -44,6 +44,33 @@ couchdb_enabled: true
 # /couchdb                                                             #
 #                                                                      #
 ########################################################################
+```
+
+### Specify server administrator's username and password
+
+You also need to specify a server administrator's login credential by adding the following configuration to your `vars.yml` file:
+
+```yaml
+couchdb_root_username: YOUR_ADMIN_USERNAME_HERE
+
+couchdb_root_password: YOUR_ADMIN_PASSWORD_HERE
+```
+
+>[!NOTE]
+>
+> - CouchDB requires a server administrator account to start. If one has not been created, CouchDB will print an error message and terminate. See [this section](#creating-users) below for details about how to create it.
+> - After installing the CouchDB it will be possible to create other administrator accounts on its web UI.
+
+### Specify users (optional)
+
+You can create users by specifying ones with `couchdb_users_custom` as below on your `vars.yml` file:
+
+```yaml
+couchdb_users_custom:
+  - name: YOUR_USER_USERNAME_HERE
+    password: YOUR_USER_PASSWORD_HERE
+    roles: []
+    type: user
 ```
 
 ### Exposing the instance (optional)
@@ -68,9 +95,9 @@ There are some additional things you may wish to configure about the service.
 
 Take a look at:
 
-- [`defaults/main.yml`](../defaults/main.yml) for some variables that you can customize via your `vars.yml` file. You can override settings (even those that don't have dedicated playbook variables) using the `couchdb_environment_variables_additional_variables` variable
+- [`defaults/main.yml`](../defaults/main.yml) for some variables that you can customize via your `vars.yml` file.
 
-See the [documentation](https://docs.couchdb.io/enterprise/docker/config) for a complete list of CouchDB's config options that you could put in `couchdb_environment_variables_additional_variables`.
+See the [documentation](https://docs.couchdb.org/en/stable/config/index.html) for a complete list of CouchDB's config options that you could put in `couchdb_config_extension`.
 
 ## Installing
 
@@ -85,6 +112,14 @@ If you use the MASH playbook, the shortcut commands with the [`just` program](ht
 ## Usage
 
 After running the command for installation, CouchDB becomes available internally to other services on the same network. If the service is exposed to the internet, it becomes available at the specified hostname like `https://example.com`.
+
+### Creating users
+
+You can create users (administrators and normal users) by running the command below:
+
+```sh
+ansible-playbook -i inventory/hosts setup.yml --tags=create-user-couchdb
+```
 
 ## Troubleshooting
 
