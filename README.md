@@ -1,91 +1,25 @@
 <!--
-SPDX-FileCopyrightText: 2024 Bergrübe
+SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
-# CouchDB Ansible Role for MASH Playbook
+# CouchDB Ansible role
 
-This Ansible role is designed to install and configure CouchDB for use with the [Mother of all self-hosting (MASH) playbook](https://github.com/mother-of-all-self-hosting/mash-playbook). It automates the process of setting up CouchDB in a Docker container, ensuring that the necessary system tables are created, users are added, and appropriate database permissions are set.
-This role uses the [official CouchDB Docker image](https://github.com/apache/couchdb-docker).
+This is an [Ansible](https://www.ansible.com/) role which installs [CouchDB](https://couchdb.apache.org/) to run as a [Docker](https://www.docker.com/) container wrapped in a systemd service.
 
-## Features
+This role *implicitly* depends on:
 
-- Sets up CouchDB in a Docker container.
-- Creates necessary system tables, if `couchdb_config_single_node: true.
-- Adds users as specified in the playbook.
-- Sets database permissions.
-- Integrates with the MASH playbook for easy deployment.
+- [`com.devture.ansible.role.playbook_help`](https://github.com/devture/com.devture.ansible.role.playbook_help)
+- [`com.devture.ansible.role.systemd_docker_base`](https://github.com/devture/com.devture.ansible.role.systemd_docker_base)
 
-## Requirements
+Check [`defaults/main.yml`](defaults/main.yml) for the full list of supported options. Refer to [this page](docs/configuring-couchdb.md) for details about setting up the service with this role.
 
-- Docker
-- Ansible
-- [MASH playbook](https://github.com/mother-of-all-self-hosting/mash-playbook)
+💡 For an Ansible playbook which integrates this role and makes it easier to use, see the [Mother-of-All-Self-Hosting Ansible playbook](https://github.com/mother-of-all-self-hosting/mash-playbook).
 
-## Usage
+## Development
 
-To use this role with the MASH playbook, add it to your inventory file in your MASH playbook directory:
+You can optionally install [pre-commit](https://pre-commit.com/) so that simple mistakes are checked and noticed before changes are pushed to a remote branch. See [`.pre-commit-config.yaml`](./.pre-commit-config.yaml) for which hooks are to be executed.
 
-```yaml
-########################################################################
-#                                                                      #
-# CouchDB                                                              #
-#                                                                      #
-########################################################################
-
-couchdb_enabled:: true
-
-couchdb_hostname: couchdb.example.com
-
-# enable CouchDB single node mode, to automatically create databases and users
-couchdb_config_single_node: true
-
-couchdb_admins_custom:
-  - name: admin
-    password: UseASecurePassword
-
-couchdb_users_custom:
-  - name: user1
-    password: UseASecurePassword
-    roles: []
-    type: user
-
-couchdb_tables_custom:
-    - name: my_custom_table
-      permission:
-        admin:
-          names:
-            - user1
-          roles: []
-        member:
-          names: []
-          roles: []
-
-########################################################################
-#                                                                      #
-# /cocuhdb                                                             #
-#                                                                      #
-########################################################################
-```
-
-You can customize the behavior of the role by setting the following variables in your playbook:
-
-- `couchdb_environment_variables_extension`: to add additional environment variables to the CouchDB container.
-- `couchdb_config_extension`: to add additional configuration to the CouchDB configuration
-- `couchdb_config_peruser_enabled`: to enable per-user configuration in CouchDB | default is `true`.
-- `couchdb_config_require_valid_user_except_for_up`: to require a valid user for all requests except for the `_up` endpoint | default is `true`.
-- `couchdb_container_additional_networks_custom`: to add additional networks to the CouchDB container.
-- `couchdb_version`: to specify the version of the CouchDB Docker image to use
-
-For more information on possible configuration, refer to the comments in the `defaults/main.yml` file in this role.
-
-By default, this role will not expose the CouchDB port to the host machine. If you want to access CouchDB from outside the Docker container, you will need to expose the port in your playbook via the `couchdb_container_http_host_bind_port` variable. Or you can just add the container to another docker network via the `couchdb_container_additional_networks_custom` variable.
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit a Pull Request.
-
-## Support
-
-If you encounter any problems or have any questions, please open an issue on GitHub.
+See [this section](https://pre-commit.com/#usage) on the official documentation for usage.
