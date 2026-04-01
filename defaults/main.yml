@@ -14,6 +14,7 @@ couchdb_enabled: true
 
 couchdb_identifier: couchdb
 couchdb_base_path: "/{{ couchdb_identifier }}"
+couchdb_config_path: "{{ couchdb_base_path }}/config"
 couchdb_data_path: "{{ couchdb_base_path }}/data"
 
 # renovate: datasource=docker depName=library/couchdb versioning=semver
