@@ -80,7 +80,7 @@ couchdb_container_additional_volumes_custom: []
 # See `../templates/labels.j2` for details.
 #
 # To inject your own other container labels, see `couchdb_container_labels_additional_labels_custom`.
-couchdb_container_labels_traefik_enabled: true
+couchdb_container_labels_traefik_enabled: false
 couchdb_container_labels_traefik_docker_network: "{{ couchdb_container_network }}"
 couchdb_container_labels_traefik_hostname: "{{ couchdb_hostname }}"
 # The path prefix must either be `/` or not end with a slash (e.g. `/couchdb`).
