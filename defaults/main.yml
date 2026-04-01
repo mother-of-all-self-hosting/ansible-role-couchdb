@@ -233,7 +233,7 @@ couchdb_config_peruser_enabled: true
 couchdb_config_require_valid_user_except_for_up: true
 
 # See options: https://docs.couchdb.org/en/stable/config/logging.html#log/level
-couchdb_config_loglevel: error
+couchdb_config_loglevel: info
 
 couchdb_admins_auto:
   - user: "{{ couchdb_root_username }}"
