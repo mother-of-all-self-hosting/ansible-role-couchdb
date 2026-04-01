@@ -218,6 +218,11 @@ couchdb_container_cleanup_command: |
   echo "Failed to remove stale container {{ couchdb_identifier }} after {{ couchdb_container_cleanup_timeout_seconds }} attempts" >&2;
   exit 1
 
+couchdb_connection_hostname: "{{ couchdb_identifier }}"
+couchdb_connection_port: 5984
+couchdb_root_username: root
+couchdb_root_password: ""
+
 # Control if CouchDB single node mode is enabled
 couchdb_config_single_node: true
 
@@ -230,11 +235,9 @@ couchdb_config_require_valid_user_except_for_up: true
 # See options: https://docs.couchdb.org/en/stable/config/logging.html#log/level
 couchdb_config_loglevel: error
 
-couchdb_admin_user: ""
-couchdb_admin_passwd: ""
 couchdb_admins_auto:
-  - user: "{{ couchdb_admin_user }}"
-    password: "{{ couchdb_admin_passwd }}"
+  - user: "{{ couchdb_root_username }}"
+    password: "{{ couchdb_root_password }}"
 couchdb_admins_custom: []
 couchdb_admins: "{{ couchdb_admins_auto + couchdb_admins_custom }}"
 
