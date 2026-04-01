@@ -1,27 +1,110 @@
+# SPDX-FileCopyrightText: 2023 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2024 Bergrübe
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-
 - name: Check existence of CouchDB systemd service
   ansible.builtin.stat:
     path: "{{ devture_systemd_docker_base_systemd_path }}/{{ couchdb_identifier }}.service"
   register: couchdb_service_stat
 
-- when: couchdb_service_stat.stat.exists | bool
+- name: Uninstall CouchDB systemd services and files
+  when: couchdb_service_stat.stat.exists | bool
   block:
-    - name: Ensure CouchDB service is stopped
+    - name: Ensure CouchDB systemd service is stopped
       ansible.builtin.service:
-        name: "{{ couchdb_identifier }}.service"
+        name: "{{ couchdb_identifier }}"
         state: stopped
+        enabled: false
         daemon_reload: true
-    - name: Ensure CouchDB service doesn't exist
+
+    - name: Ensure CouchDB systemd service does not exist
       ansible.builtin.file:
-        dest: "{{ devture_systemd_docker_base_systemd_path }}/{{ couchdb_identifier }}.service"
+        path: "{{ devture_systemd_docker_base_systemd_path }}/{{ couchdb_identifier }}.service"
         state: absent
 
-- name: Ensure CouchDB base path is files deleted
-  ansible.builtin.file:
-    path: "{{ couchdb_base_path }}"
-    state: absent
+    - name: Ensure CouchDB support files do not exist
+      ansible.builtin.file:
+        path: "{{ couchdb_base_path }}/{{ item }}"
+        state: absent
+      with_items:
+        - env
+        - labels
+
+    - name: Ensure CouchDB local config path does not exist if empty
+      ansible.builtin.command:
+        cmd: "rmdir {{ couchdb_config_path }}"
+      register: couchdb_config_path_deletion_result
+      changed_when: couchdb_config_path_deletion_result.rc == 0
+      failed_when: false
+
+    - name: Ensure CouchDB local data path does not exist if empty
+      ansible.builtin.command:
+        cmd: "rmdir {{ couchdb_data_path }}"
+      register: couchdb_data_path_deletion_result
+      changed_when: couchdb_data_path_deletion_result.rc == 0
+      failed_when: false
+
+    - name: Ensure CouchDB base path does not exist if empty
+      ansible.builtin.command:
+        cmd: "rmdir {{ couchdb_base_path }}"
+      register: couchdb_base_path_deletion_result
+      changed_when: couchdb_base_path_deletion_result.rc == 0
+      failed_when: false
+
+    - name: Ensure CouchDB container network does not exist
+      when: couchdb_container_network_deletion_enabled
+      block:
+        - name: Ensure CouchDB container network does not exist via community.docker.docker_network
+          when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
+          community.docker.docker_network:
+            name: "{{ couchdb_container_network }}"
+            state: absent
+          register: couchdb_network_deletion_result
+
+        - name: Ensure CouchDB container network does not exist via ansible.builtin.command
+          when: devture_systemd_docker_base_container_network_creation_method == 'command'
+          ansible.builtin.command:
+            cmd: >-
+              {{ devture_systemd_docker_base_host_command_docker }} network rm
+              {{ couchdb_container_network }}
+          register: couchdb_network_deletion_result
+          changed_when: couchdb_container_network in couchdb_network_deletion_result.stdout
+
+- name: Check existence of CouchDB local config path
+  ansible.builtin.stat:
+    path: "{{ couchdb_config_path }}"
+  register: couchdb_config_path_stat
+
+# We just want to notify the user. Deleting data is too destructive.
+- name: Notify if CouchDB local config remains
+  when: couchdb_config_path_stat.stat.exists | bool
+  ansible.builtin.set_fact:
+    devture_playbook_runtime_messages_list: |
+      {{
+        devture_playbook_runtime_messages_list | default([])
+        +
+        [
+          "Note: As the local CouchDB instance has been removed, some old config remains in `" + couchdb_config_path + "`. Feel free to delete it."
+        ]
+      }}
+
+- name: Check existence of CouchDB local data path
+  ansible.builtin.stat:
+    path: "{{ couchdb_data_path }}"
+  register: couchdb_data_path_stat
+
+# We just want to notify the user. Deleting data is too destructive.
+- name: Notify if CouchDB local data remains
+  when: couchdb_data_path_stat.stat.exists | bool
+  ansible.builtin.set_fact:
+    devture_playbook_runtime_messages_list: |
+      {{
+        devture_playbook_runtime_messages_list | default([])
+        +
+        [
+          "Note: As the local CouchDB instance has been removed, some old data remains in `" + couchdb_data_path + "`. Feel free to delete it."
+        ]
+      }}
