@@ -14,7 +14,7 @@
     - install-couchdb
   block:
     - name: Validate CouchDB configuration
-      ansible.builtin.include_tasks: "{{ role_path }}/tasks/util/validate_config.yml"
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/validate_config.yml"
     - name: Install CouchDB
       ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
 
