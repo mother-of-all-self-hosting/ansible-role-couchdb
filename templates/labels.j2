@@ -1,7 +1,61 @@
 {#
-SPDX-FileCopyrightText: 2024 Bergrübe
+SPDX-FileCopyrightText: 2023 Slavi Pantaleev
+SPDX-FileCopyrightText: 2025 Suguru Hirahara
 
 SPDX-License-Identifier: AGPL-3.0-or-later
 #}
 
-{{ couchdb_container_labels_additional_labels }}
+{% if couchdb_container_labels_traefik_enabled %}
+traefik.enable=true
+
+{% if couchdb_container_labels_traefik_docker_network %}
+traefik.docker.network={{ couchdb_container_labels_traefik_docker_network }}
+{% endif %}
+
+{% set middlewares = [] %}
+
+{% if couchdb_container_labels_traefik_path_prefix != '/' %}
+traefik.http.middlewares.{{ couchdb_identifier }}-slashless-redirect.redirectregex.regex=^({{ couchdb_container_labels_traefik_path_prefix | quote }})$
+traefik.http.middlewares.{{ couchdb_identifier }}-slashless-redirect.redirectregex.replacement=${1}/
+{% set middlewares = middlewares + [couchdb_identifier + '-slashless-redirect'] %}
+{% endif %}
+
+{% if couchdb_container_labels_traefik_path_prefix != '/' %}
+traefik.http.middlewares.{{ couchdb_identifier }}-strip-prefix.stripprefix.prefixes={{ couchdb_container_labels_traefik_path_prefix }}
+{% set middlewares = middlewares + [couchdb_identifier + '-strip-prefix'] %}
+{% endif %}
+
+{% if couchdb_container_labels_traefik_additional_request_headers.keys() | length > 0 %}
+{% for name, value in couchdb_container_labels_traefik_additional_request_headers.items() %}
+traefik.http.middlewares.{{ couchdb_identifier }}-add-request-headers.headers.customrequestheaders.{{ name }}={{ value }}
+{% endfor %}
+{% set middlewares = middlewares + [couchdb_identifier + '-add-request-headers'] %}
+{% endif %}
+
+{% if couchdb_container_labels_traefik_additional_response_headers.keys() | length > 0 %}
+{% for name, value in couchdb_container_labels_traefik_additional_response_headers.items() %}
+traefik.http.middlewares.{{ couchdb_identifier }}-add-response-headers.headers.customresponseheaders.{{ name }}={{ value }}
+{% endfor %}
+{% set middlewares = middlewares + [couchdb_identifier + '-add-response-headers'] %}
+{% endif %}
+
+traefik.http.routers.{{ couchdb_identifier }}.rule={{ couchdb_container_labels_traefik_rule }}
+{% if couchdb_container_labels_traefik_priority | int > 0 %}
+traefik.http.routers.{{ couchdb_identifier }}.priority={{ couchdb_container_labels_traefik_priority }}
+{% endif %}
+traefik.http.routers.{{ couchdb_identifier }}.service={{ couchdb_identifier }}
+{% if middlewares | length > 0 %}
+traefik.http.routers.{{ couchdb_identifier }}.middlewares={{ middlewares | join(',') }}
+{% endif %}
+traefik.http.routers.{{ couchdb_identifier }}.entrypoints={{ couchdb_container_labels_traefik_entrypoints }}
+traefik.http.routers.{{ couchdb_identifier }}.tls={{ couchdb_container_labels_traefik_tls | to_json }}
+{% if couchdb_container_labels_traefik_tls %}
+traefik.http.routers.{{ couchdb_identifier }}.tls.certResolver={{ couchdb_container_labels_traefik_tls_certResolver }}
+{% endif %}
+
+traefik.http.services.{{ couchdb_identifier }}.loadbalancer.server.port={{ couchdb_container_http_port }}
+{% endif %}
+
+{% for arg in couchdb_container_labels_additional_labels %}
+{{ arg }}
+{% endfor %}
