@@ -1,36 +1,36 @@
+# SPDX-FileCopyrightText: 2023 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2024 Bergrübe
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-
-- block:
-    - when: couchdb_enabled | bool
+- name: Perform CouchDB installation tasks
+  when: couchdb_enabled | bool
+  tags:
+    - setup-all
+    - setup-couchdb
+    - install-all
+    - install-couchdb
+  block:
+    - name: Validate CouchDB configuration
       ansible.builtin.include_tasks: "{{ role_path }}/tasks/util/validate_config.yml"
-  tags:
-    - setup-all
-    - setup-couchdb
-    - install-all
-    - install-couchdb
-
-- block:
-    - when: couchdb_enabled | bool
+    - name: Install CouchDB
       ansible.builtin.include_tasks: "{{ role_path }}/tasks/install.yml"
-  tags:
-    - setup-all
-    - setup-couchdb
-    - install-all
-    - install-couchdb
 
-- block:
-    - when: couchdb_enabled | bool
+- name: Perform CouchDB user creation tasks
+  when: couchdb_enabled | bool
+  tags:
+    - create-user-couchdb
+  block:
+    - name: Run CouchDB 'user create' command
       ansible.builtin.include_tasks: "{{ role_path }}/tasks/util/create_user.yml"
-  tags:
-    - couchdb-add-user
 
-- block:
-    - when: not couchdb_enabled | bool
-      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"
+- name: Perform CouchDB uninstallation tasks
+  when: not couchdb_enabled | bool
   tags:
     - setup-all
     - setup-couchdb
+  block:
+    - name: Uninstall CouchDB
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/uninstall.yml"
