@@ -15,7 +15,7 @@ uuid = {{ couchdb_config_uuid }}
 
 [couch_peruser]
 enable = {{ couchdb_config_peruser_enabled }}
-delete_dbs = true
+delete_dbs = {{ couchdb_config_peruser_delete_dbs | to_json }}
 
 [chttpd]
 bind_address = 0.0.0.0

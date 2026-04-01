@@ -230,6 +230,10 @@ couchdb_config_uuid: ""
 
 couchdb_config_peruser_enabled: true
 
+# Control if the database of a user gets deleted when the user is deleted
+# See: https://docs.couchdb.org/en/stable/config/couch-peruser.html#couch_peruser/delete_dbs
+couchdb_config_peruser_delete_dbs: false
+
 couchdb_config_require_valid_user_except_for_up: true
 
 # See options: https://docs.couchdb.org/en/stable/config/logging.html#log/level
