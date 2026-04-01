@@ -1,3 +1,9 @@
+<!--
+SPDX-FileCopyrightText: 2024 Bergrübe
+
+SPDX-License-Identifier: AGPL-3.0-or-later
+-->
+
 # CouchDB Ansible Role for MASH Playbook
 
 This Ansible role is designed to install and configure CouchDB for use with the [Mother of all self-hosting (MASH) playbook](https://github.com/mother-of-all-self-hosting/mash-playbook). It automates the process of setting up CouchDB in a Docker container, ensuring that the necessary system tables are created, users are added, and appropriate database permissions are set.
