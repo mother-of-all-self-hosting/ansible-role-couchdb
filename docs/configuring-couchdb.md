@@ -16,51 +16,51 @@ SPDX-FileCopyrightText: 2024 - 2025 Suguru Hirahara
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
-# Setting up Browserless
+# Setting up CouchDB
 
-This is an [Ansible](https://www.ansible.com/) role which installs [Browserless](https://docs.browserless.io) to run as a [Docker](https://www.docker.com/) container wrapped in a systemd service.
+This is an [Ansible](https://www.ansible.com/) role which installs [CouchDB](https://docs.couchdb.io) to run as a [Docker](https://www.docker.com/) container wrapped in a systemd service.
 
-Browserless allows to deploy headless browsers in Docker.
+CouchDB allows to deploy headless browsers in Docker.
 
-See the project's [documentation](https://docs.browserless.io/enterprise/quick-start) to learn what Browserless does and why it might be useful to you.
+See the project's [documentation](https://docs.couchdb.io/enterprise/quick-start) to learn what CouchDB does and why it might be useful to you.
 
 ## Adjusting the playbook configuration
 
-To enable Browserless with this role, add the following configuration to your `vars.yml` file.
+To enable CouchDB with this role, add the following configuration to your `vars.yml` file.
 
 **Note**: the path should be something like `inventory/host_vars/mash.example.com/vars.yml` if you use the [MASH Ansible playbook](https://github.com/mother-of-all-self-hosting/mash-playbook).
 
 ```yaml
 ########################################################################
 #                                                                      #
-# browserless                                                          #
+# couchdb                                                              #
 #                                                                      #
 ########################################################################
 
-browserless_enabled: true
+couchdb_enabled: true
 
 ########################################################################
 #                                                                      #
-# /browserless                                                         #
+# /couchdb                                                             #
 #                                                                      #
 ########################################################################
 ```
 
 ### Exposing the instance (optional)
 
-By default, the Browserless instance is not exposed externally, as it is mainly intended to be used in the internal network, connected to other services.
+By default, the CouchDB instance is not exposed externally, as it is mainly intended to be used in the internal network, connected to other services.
 
 To expose it to the internet, add the following configuration to your `vars.yml` file. Make sure to replace `example.com` with your own value.
 
 ```yaml
-browserless_hostname: "example.com"
+couchdb_hostname: "example.com"
 
-browserless_container_labels_traefik_enabled: true
+couchdb_container_labels_traefik_enabled: true
 ```
 
 After adjusting the hostname, make sure to adjust your DNS records to point the domain to your server.
 
-**Note**: hosting Browserless under a subpath (by configuring the `browserless_path_prefix` variable) does not seem to be possible due to Browserless's technical limitations.
+**Note**: hosting CouchDB under a subpath (by configuring the `couchdb_path_prefix` variable) does not seem to be possible due to CouchDB's technical limitations.
 
 ### Extending the configuration
 
@@ -68,9 +68,9 @@ There are some additional things you may wish to configure about the service.
 
 Take a look at:
 
-- [`defaults/main.yml`](../defaults/main.yml) for some variables that you can customize via your `vars.yml` file. You can override settings (even those that don't have dedicated playbook variables) using the `browserless_environment_variables_additional_variables` variable
+- [`defaults/main.yml`](../defaults/main.yml) for some variables that you can customize via your `vars.yml` file. You can override settings (even those that don't have dedicated playbook variables) using the `couchdb_environment_variables_additional_variables` variable
 
-See the [documentation](https://docs.browserless.io/enterprise/docker/config) for a complete list of Browserless's config options that you could put in `browserless_environment_variables_additional_variables`.
+See the [documentation](https://docs.couchdb.io/enterprise/docker/config) for a complete list of CouchDB's config options that you could put in `couchdb_environment_variables_additional_variables`.
 
 ## Installing
 
@@ -84,10 +84,10 @@ If you use the MASH playbook, the shortcut commands with the [`just` program](ht
 
 ## Usage
 
-After running the command for installation, Browserless becomes available internally to other services on the same network. If the service is exposed to the internet, it becomes available at the specified hostname like `https://example.com`.
+After running the command for installation, CouchDB becomes available internally to other services on the same network. If the service is exposed to the internet, it becomes available at the specified hostname like `https://example.com`.
 
 ## Troubleshooting
 
 ### Check the service's logs
 
-You can find the logs in [systemd-journald](https://www.freedesktop.org/software/systemd/man/systemd-journald.service.html) by logging in to the server with SSH and running `journalctl -fu browserless` (or how you/your playbook named the service, e.g. `mash-browserless`).
+You can find the logs in [systemd-journald](https://www.freedesktop.org/software/systemd/man/systemd-journald.service.html) by logging in to the server with SSH and running `journalctl -fu couchdb` (or how you/your playbook named the service, e.g. `mash-couchdb`).
