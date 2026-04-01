@@ -49,12 +49,6 @@ couchdb_config_uuid: ''
 # enable CouchDB single node mode, to automatically create system databases
 couchdb_config_single_node: true
 
-# Additional environment variables to pass to the CouchDB container.
-#
-# Example:
-# couchdb_environment_variables_extension: |
-#   SOMETHING=true
-couchdb_environment_variables_extension: ''
 couchdb_config_extension: ''
 couchdb_container_labels_additional_labels: ''
 
@@ -135,3 +129,9 @@ couchdb_container_http_host_bind_port: ""
 couchdb_container_additional_networks: "{{ couchdb_container_additional_networks_auto + couchdb_container_additional_networks_custom }}"
 couchdb_container_additional_networks_auto: []
 couchdb_container_additional_networks_custom: []
+
+# Specify the timezone
+couchdb_environment_variables_tz: UTC
+
+# Additional environment variables.
+couchdb_environment_variables_additional_variables: ""
