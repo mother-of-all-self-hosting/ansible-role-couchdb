@@ -224,29 +224,42 @@ couchdb_root_username: root
 couchdb_root_password: ""
 
 # Control if CouchDB single node mode is enabled
+# See: https://docs.couchdb.org/en/stable/config/couchdb.html#couchdb/single_node
 couchdb_config_single_node: true
 
+# Specify Unique identifier for this CouchDB cluster
+# See: https://docs.couchdb.org/en/stable/config/couchdb.html#couchdb/uuid
 couchdb_config_uuid: ""
 
+# Control if Database Per User is enabled
+# See: https://docs.couchdb.org/en/stable/config/couch-peruser.html#couch_peruser
 couchdb_config_peruser_enabled: true
 
 # Control if the database of a user gets deleted when the user is deleted
 # See: https://docs.couchdb.org/en/stable/config/couch-peruser.html#couch_peruser/delete_dbs
 couchdb_config_peruser_delete_dbs: false
 
+# Control if no requests are allowed from anonymous users, except for the /_up endpoint
+# See: https://docs.couchdb.org/en/stable/config/auth.html#chttpd/require_valid_user_except_for_up
 couchdb_config_require_valid_user_except_for_up: true
 
-# See options: https://docs.couchdb.org/en/stable/config/logging.html#log/level
+# Specify log level
+# See: https://docs.couchdb.org/en/stable/config/logging.html#log/level
 couchdb_config_loglevel: info
 
+# Specify server administrators
+# See: https://docs.couchdb.org/en/stable/config/auth.html#admins
+couchdb_admins: "{{ couchdb_admins_auto + couchdb_admins_custom }}"
 couchdb_admins_auto:
   - user: "{{ couchdb_root_username }}"
     password: "{{ couchdb_root_password }}"
 couchdb_admins_custom: []
-couchdb_admins: "{{ couchdb_admins_auto + couchdb_admins_custom }}"
 
+# Specify value for "secret" of authentication configuration
+# See: https://docs.couchdb.org/en/stable/config/auth.html#chttpd_auth/secret
 couchdb_config_couch_chttpd_auth_secret: ""
 
+# Additional configurations to be added to local.ini
 couchdb_config_extension: ""
 
 # Define tables
