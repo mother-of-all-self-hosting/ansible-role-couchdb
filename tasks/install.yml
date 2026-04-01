@@ -4,7 +4,7 @@
 
 ---
 
-- name: Ensure couchdb network is created in Docker
+- name: Ensure CouchDB network is created in Docker
   community.docker.docker_network:
     enable_ipv6: "{{ devture_systemd_docker_base_ipv6_enabled }}"
     name: "{{ couchdb_container_network }}"
@@ -12,7 +12,7 @@
     driver_options: "{{ devture_systemd_docker_base_container_networks_driver_options }}"
 
 
-- name: Ensure couchdb paths exists
+- name: Ensure CouchDB paths exists
   ansible.builtin.file:
     path: "{{ item.path }}"
     state: directory
@@ -24,7 +24,7 @@
     - {path: "{{ couchdb_data_path }}", when: true}
     - {path: "{{ couchdb_config_path }}", when: true}
 
-- name: Ensure couchdb files are installed
+- name: Ensure CouchDB files are installed
   ansible.builtin.template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
@@ -35,7 +35,7 @@
     - {src: "{{ role_path }}/templates/labels.j2", dest: "{{ couchdb_base_path }}/labels"}
     - {src: "{{ role_path }}/templates/local.ini.j2", dest: "{{ couchdb_config_path }}/local.ini"}
 
-- name: Ensure couchdb configuration is deployed
+- name: Ensure CouchDB configuration is deployed
   ansible.builtin.template:
     src: "{{ item.src }}"
     dest: "{{ item.dest }}"
@@ -45,7 +45,7 @@
   with_items:
     - {src: "{{ role_path }}/templates/env.j2", dest: "{{ couchdb_base_path }}/env"}
 
-- name: Ensure couchdb container image is pulled
+- name: Ensure CouchDB container image is pulled
   community.docker.docker_image:
     name: "{{ item.image }}"
     source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
@@ -53,20 +53,20 @@
     - {image: "{{ couchdb_container_image }}"}
 
 - block:
-    - name: Stop existing couchdb container
+    - name: Stop existing CouchDB container
       ansible.builtin.command:
         cmd: "{{ devture_systemd_docker_base_host_command_docker }} stop {{ couchdb_identifier }}"
       ignore_errors: true
 
-    - name: Ensure couchdb is started for setup
+    - name: Ensure CouchDB is started for setup
       ansible.builtin.command:
         cmd: '{{ devture_systemd_docker_base_host_command_docker }} run --rm --name={{ couchdb_identifier }} --read-only --detach --user={{ couchdb_uid }}:{{ couchdb_gid }} --hostname={{ couchdb_identifier }} --cap-drop=all --network={{ couchdb_container_network }} --env-file={{ couchdb_base_path }}/env --label-file={{ couchdb_base_path }}/labels --mount type=bind,src={{ couchdb_config_path }},dst="/opt/couchdb/etc/local.d" --mount type=bind,src={{ couchdb_data_path }},dst=/opt/couchdb/data --tmpfs=/tmp:rw,noexec,nosuid,size={{ couchdb_tmp_size }}m {{ couchdb_container_image }}'
 
-    - name: Wait for couchdb to start
+    - name: Wait for CouchDB to start
       ansible.builtin.pause:
         seconds: 5
 
-    - name: Ensure couchdb system tables are created
+    - name: Ensure CouchDB system tables are created
       ansible.builtin.command:
         cmd: "{{ devture_systemd_docker_base_host_command_docker }} exec {{ couchdb_identifier }} curl -X PUT http://{{ couchdb_admin_user }}:{{ couchdb_admin_passwd }}@localhost:5984/{{ item.name }}"
       register: couchdb_tables_output
@@ -75,7 +75,7 @@
       loop: "{{ couchdb_tables }}"
 
 
-    - name: Create couchdb users
+    - name: Create CouchDB users
       ansible.builtin.command:
         cmd: "{{ devture_systemd_docker_base_host_command_docker }} exec {{ couchdb_identifier }} curl -X PUT http://{{ couchdb_admin_user }}:{{ couchdb_admin_passwd }}@localhost:5984/_users/org.couchdb.user:{{ item.name }} -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{{ item | to_json }}'"
       register: couchdb_users_output
@@ -86,7 +86,7 @@
       when: couchdb_users | length > 0
 
 
-    - name: Ensure couchdb database permissions are set
+    - name: Ensure CouchDB database permissions are set
       ansible.builtin.command:
         cmd: >
           {{ devture_systemd_docker_base_host_command_docker }} exec {{ couchdb_identifier }} curl -X PUT http://{{ couchdb_admin_user }}:{{ couchdb_admin_passwd }}@localhost:5984/{{ item.name }}/_security -H "Accept: application/json" -H "Content-Type: application/json" -d '{{ item.permission | default(couchdb_default_permissions) | to_json }}'
@@ -96,7 +96,7 @@
       loop: "{{ (couchdb_tables_custom | union(couchdb_tables_auto)) }}"
       when: (couchdb_tables_custom | union(couchdb_tables_auto)) | length > 0
 
-    - name: Ensure couchdb is stopped
+    - name: Ensure CouchDB is stopped
       ansible.builtin.command:
         cmd: "{{ devture_systemd_docker_base_host_command_docker }} stop {{ couchdb_identifier }}"
   when: couchdb_config_single_node | bool

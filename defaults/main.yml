@@ -46,10 +46,10 @@ couchdb_config_couch_chttpd_auth_secret: ''
 couchdb_config_uuid: ''
 
 
-# enable couchdb single node mode, to automatically create system databases
+# enable CouchDB single node mode, to automatically create system databases
 couchdb_config_single_node: true
 
-# Additional environment variables to pass to the couchdb container.
+# Additional environment variables to pass to the CouchDB container.
 #
 # Example:
 # couchdb_environment_variables_extension: |
@@ -124,7 +124,7 @@ couchdb_systemd_required_services_list_custom: []
 
 couchdb_container_http_port: 5984
 
-# Controls whether the couchdb container exposes its HTTP port (as defined by `couchdb_container_http_port`).
+# Controls whether the CouchDB container exposes its HTTP port (as defined by `couchdb_container_http_port`).
 #
 # Takes an "<ip>:<port>" or "<port>" value (e.g. "127.0.0.1:8731"), or empty string to not expose.
 couchdb_container_http_host_bind_port: ""

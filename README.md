@@ -30,7 +30,7 @@ To use this role with the MASH playbook, add it to your inventory file in your M
 ```yaml
 ########################################################################
 #                                                                      #
-# couchdb                                                              #
+# CouchDB                                                              #
 #                                                                      #
 ########################################################################
 
@@ -38,7 +38,7 @@ couchdb_enabled:: true
 
 couchdb_hostname: couchdb.example.com
 
-# enable couchdb single node mode, to automatically create databases and users
+# enable CouchDB single node mode, to automatically create databases and users
 couchdb_config_single_node: true
 
 couchdb_admins_custom:

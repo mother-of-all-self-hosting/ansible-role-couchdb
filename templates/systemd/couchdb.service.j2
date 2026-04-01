@@ -5,7 +5,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 #}
 
 [Unit]
-Description=couchdb Server ({{ couchdb_identifier }})
+Description=CouchDB Server ({{ couchdb_identifier }})
 {% for service in couchdb_systemd_required_services_list %}
 Requires={{ service }}
 After={{ service }}
