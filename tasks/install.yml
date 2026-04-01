@@ -1,111 +1,103 @@
+# SPDX-FileCopyrightText: 2023-2025 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2024 Bergrübe
+# SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
+- name: Ensure CouchDB paths exist
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0750"
+    owner: "{{ couchdb_uid }}"
+    group: "{{ couchdb_gid }}"
+  with_items:
+    - "{{ couchdb_base_path }}"
+    - "{{ couchdb_config_path }}"
+    - "{{ couchdb_data_path }}"
 
-- name: Ensure CouchDB network is created in Docker
+- name: Ensure CouchDB support files installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/{{ item }}.j2"
+    dest: "{{ couchdb_base_path }}/{{ item }}"
+    mode: "0640"
+    owner: "{{ couchdb_uid }}"
+    group: "{{ couchdb_gid }}"
+  with_items:
+    - env
+    - labels
+  register: couchdb_support_files_result
+
+- name: Ensure CouchDB configuration file installed
+  ansible.builtin.template:
+    src: "{{ role_path }}/templates/{{ item }}.j2"
+    dest: "{{ couchdb_config_path }}/{{ item }}"
+    mode: "0640"
+    owner: "{{ couchdb_uid }}"
+    group: "{{ couchdb_gid }}"
+  with_items:
+    - local.ini
+  register: couchdb_config_file_result
+
+- name: Ensure CouchDB container image is pulled via community.docker.docker_image
+  when: devture_systemd_docker_base_container_image_pull_method == 'ansible-module'
+  community.docker.docker_image:
+    name: "{{ couchdb_container_image }}"
+    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
+    force_source: "{{ couchdb_container_image_force_pull if ansible_version.major > 2 or ansible_version.minor >= 8 else omit }}"
+    force: "{{ omit if ansible_version.major > 2 or ansible_version.minor >= 8 else couchdb_container_image_force_pull }}"
+  register: couchdb_container_image_pull_result_ansible_module
+  retries: "{{ devture_playbook_help_container_retries_count }}"
+  delay: "{{ devture_playbook_help_container_retries_delay }}"
+  until: couchdb_container_image_pull_result_ansible_module is not failed
+
+- name: Ensure CouchDB container image is pulled via ansible.builtin.command
+  when: devture_systemd_docker_base_container_image_pull_method == 'command'
+  ansible.builtin.command:
+    cmd: "{{ devture_systemd_docker_base_host_command_docker }} pull {{ couchdb_container_image }}"
+  register: couchdb_container_image_pull_result_command
+  retries: "{{ devture_playbook_help_container_retries_count }}"
+  delay: "{{ devture_playbook_help_container_retries_delay }}"
+  until: couchdb_container_image_pull_result_command is not failed
+  changed_when: "'Downloaded newer image' in couchdb_container_image_pull_result_command.stdout"
+
+- name: Ensure CouchDB container network is created via community.docker.docker_network
+  when: devture_systemd_docker_base_container_network_creation_method == 'ansible-module'
   community.docker.docker_network:
     enable_ipv6: "{{ devture_systemd_docker_base_ipv6_enabled }}"
     name: "{{ couchdb_container_network }}"
     driver: bridge
     driver_options: "{{ devture_systemd_docker_base_container_networks_driver_options }}"
+  register: couchdb_network_creation_result
 
+- name: Ensure CouchDB container network is created via ansible.builtin.command
+  when: devture_systemd_docker_base_container_network_creation_method == 'command'
+  ansible.builtin.command:
+    cmd: >-
+      {{ devture_systemd_docker_base_host_command_docker }} network create
+      {% if devture_systemd_docker_base_ipv6_enabled %}--ipv6{% endif %}
+      {{ devture_systemd_docker_base_container_networks_driver_options_string }}
+      {{ couchdb_container_network }}
+  register: couchdb_network_creation_result
+  changed_when: couchdb_network_creation_result.rc == 0
+  failed_when: couchdb_network_creation_result.rc != 0 and 'already exists' not in couchdb_network_creation_result.stderr
 
-- name: Ensure CouchDB paths exists
-  ansible.builtin.file:
-    path: "{{ item.path }}"
-    state: directory
-    mode: 0774
-    owner: "{{ couchdb_uid }}"
-    group: "{{ couchdb_gid }}"
-  with_items:
-    - {path: "{{ couchdb_base_path }}", when: true}
-    - {path: "{{ couchdb_data_path }}", when: true}
-    - {path: "{{ couchdb_config_path }}", when: true}
-
-- name: Ensure CouchDB files are installed
+- name: Ensure CouchDB systemd service is present
   ansible.builtin.template:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    owner: "{{ couchdb_uid }}"
-    group: "{{ couchdb_gid }}"
-    mode: 0744
-  with_items:
-    - {src: "{{ role_path }}/templates/labels.j2", dest: "{{ couchdb_base_path }}/labels"}
-    - {src: "{{ role_path }}/templates/local.ini.j2", dest: "{{ couchdb_config_path }}/local.ini"}
+    src: "{{ role_path }}/templates/systemd/couchdb.service.j2"
+    dest: "{{ devture_systemd_docker_base_systemd_path }}/{{ couchdb_identifier }}.service"
+    mode: "0644"
+  register: couchdb_systemd_service_result
 
-- name: Ensure CouchDB configuration is deployed
-  ansible.builtin.template:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    owner: "{{ couchdb_uid }}"
-    group: "{{ couchdb_gid }}"
-    mode: 0640
-  with_items:
-    - {src: "{{ role_path }}/templates/env.j2", dest: "{{ couchdb_base_path }}/env"}
-
-- name: Ensure CouchDB container image is pulled
-  community.docker.docker_image:
-    name: "{{ item.image }}"
-    source: "{{ 'pull' if ansible_version.major > 2 or ansible_version.minor > 7 else omit }}"
-  with_items:
-    - {image: "{{ couchdb_container_image }}"}
-
-- block:
-    - name: Stop existing CouchDB container
-      ansible.builtin.command:
-        cmd: "{{ devture_systemd_docker_base_host_command_docker }} stop {{ couchdb_identifier }}"
-      ignore_errors: true
-
-    - name: Ensure CouchDB is started for setup
-      ansible.builtin.command:
-        cmd: '{{ devture_systemd_docker_base_host_command_docker }} run --rm --name={{ couchdb_identifier }} --read-only --detach --user={{ couchdb_uid }}:{{ couchdb_gid }} --hostname={{ couchdb_identifier }} --cap-drop=all --network={{ couchdb_container_network }} --env-file={{ couchdb_base_path }}/env --label-file={{ couchdb_base_path }}/labels --mount type=bind,src={{ couchdb_config_path }},dst="/opt/couchdb/etc/local.d" --mount type=bind,src={{ couchdb_data_path }},dst=/opt/couchdb/data --tmpfs=/tmp:rw,noexec,nosuid,size={{ couchdb_tmp_size }}m {{ couchdb_container_image }}'
-
-    - name: Wait for CouchDB to start
-      ansible.builtin.pause:
-        seconds: 5
-
-    - name: Ensure CouchDB system tables are created
-      ansible.builtin.command:
-        cmd: "{{ devture_systemd_docker_base_host_command_docker }} exec {{ couchdb_identifier }} curl -X PUT http://{{ couchdb_admin_user }}:{{ couchdb_admin_passwd }}@localhost:5984/{{ item.name }}"
-      register: couchdb_tables_output
-      changed_when: couchdb_tables_output.stdout.find('{"ok":true}') != -1
-      failed_when: couchdb_tables_output.stdout.find('{"ok":true}') == -1 and couchdb_tables_output.stdout.find('"file_exists"') == -1
-      loop: "{{ couchdb_tables }}"
-
-
-    - name: Create CouchDB users
-      ansible.builtin.command:
-        cmd: "{{ devture_systemd_docker_base_host_command_docker }} exec {{ couchdb_identifier }} curl -X PUT http://{{ couchdb_admin_user }}:{{ couchdb_admin_passwd }}@localhost:5984/_users/org.couchdb.user:{{ item.name }} -H 'Accept: application/json' -H 'Content-Type: application/json' -d '{{ item | to_json }}'"
-      register: couchdb_users_output
-      changed_when: couchdb_users_output.stdout.find('{"ok":true}') != -1
-      no_log: true # do not log the password
-      ignore_errors: true # Ignore errors if user already exists
-      loop: "{{ couchdb_users }}"
-      when: couchdb_users | length > 0
-
-
-    - name: Ensure CouchDB database permissions are set
-      ansible.builtin.command:
-        cmd: >
-          {{ devture_systemd_docker_base_host_command_docker }} exec {{ couchdb_identifier }} curl -X PUT http://{{ couchdb_admin_user }}:{{ couchdb_admin_passwd }}@localhost:5984/{{ item.name }}/_security -H "Accept: application/json" -H "Content-Type: application/json" -d '{{ item.permission | default(couchdb_default_permissions) | to_json }}'
-      register: couchdb_db_permissions_output
-      changed_when: couchdb_db_permissions_output.stdout.find('{"ok":true}') != -1
-      failed_when: couchdb_db_permissions_output.stdout.find('{"error"') != -1
-      loop: "{{ (couchdb_tables_custom | union(couchdb_tables_auto)) }}"
-      when: (couchdb_tables_custom | union(couchdb_tables_auto)) | length > 0
-
-    - name: Ensure CouchDB is stopped
-      ansible.builtin.command:
-        cmd: "{{ devture_systemd_docker_base_host_command_docker }} stop {{ couchdb_identifier }}"
-  when: couchdb_config_single_node | bool
-
-
-- name: Ensure couchdb.service installed
-  ansible.builtin.template:
-    src: "{{ item.src }}"
-    dest: "{{ item.dest }}"
-    mode: 0644
-  with_items:
-    - {src: "{{ role_path }}/templates/systemd/couchdb.service.j2", dest: "{{ devture_systemd_docker_base_systemd_path }}/{{ couchdb_identifier }}.service"}
+- name: Determine whether CouchDB needs a restart
+  ansible.builtin.set_fact:
+    couchdb_restart_necessary: >-
+      {{
+        couchdb_support_files_result.changed | default(false)
+        or couchdb_config_file_result.changed | default(false)
+        or couchdb_systemd_service_result.changed | default(false)
+        or couchdb_container_image_pull_result_ansible_module.changed | default(false)
+        or couchdb_container_image_pull_result_command.changed | default(false)
+        or couchdb_container_image_build_result.changed | default(false)
+      }}
