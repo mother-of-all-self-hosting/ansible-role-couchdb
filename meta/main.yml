@@ -1,7 +1,10 @@
+---
 galaxy_info:
-  role_name: couchdb
   author: Bergrübe
-  description: Ansible role to install a couchdb instance
+  company: mash
+  role_name: couchdb
+  namespace: mash
+  description: CouchDB
   platforms:
     - name: Debian
       versions:
@@ -16,4 +19,4 @@ galaxy_info:
       versions:
         - all
   license: AGPL-3.0-or-later
-  min_ansible_version: '2.1'
+  min_ansible_version: "2.1"
