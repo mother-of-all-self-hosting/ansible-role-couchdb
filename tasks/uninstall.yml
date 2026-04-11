@@ -79,7 +79,7 @@
   register: couchdb_config_path_stat
 
 # We just want to notify the user. Deleting data is too destructive.
-- name: Notify if CouchDB local config remains
+- name: Inject the message about the remaining CouchDB local config path
   when: couchdb_config_path_stat.stat.exists | bool
   ansible.builtin.set_fact:
     devture_playbook_runtime_messages_list: |
@@ -97,7 +97,7 @@
   register: couchdb_data_path_stat
 
 # We just want to notify the user. Deleting data is too destructive.
-- name: Notify if CouchDB local data remains
+- name: Inject the message about the remaining CouchDB local data path
   when: couchdb_data_path_stat.stat.exists | bool
   ansible.builtin.set_fact:
     devture_playbook_runtime_messages_list: |
