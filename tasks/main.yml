@@ -25,7 +25,7 @@
   block:
     - name: Run CouchDB user create command on single mode
       when: couchdb_config_single_node | bool
-      ansible.builtin.include_tasks: "{{ role_path }}/tasks/user_create.yml"
+      ansible.builtin.include_tasks: "{{ role_path }}/tasks/create_user.yml"
 
 - name: Perform CouchDB uninstallation tasks
   when: not couchdb_enabled | bool
