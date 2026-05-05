@@ -41,7 +41,6 @@ couchdb_container_image_tag: "{{ couchdb_version }}"
 couchdb_container_image_registry_prefix: "{{ couchdb_container_image_registry_prefix_upstream }}"
 couchdb_container_image_registry_prefix_upstream: "{{ couchdb_container_image_registry_prefix_upstream_default }}"
 couchdb_container_image_registry_prefix_upstream_default: docker.io/
-couchdb_container_image_force_pull: "{{ couchdb_container_image.endswith(':latest') }}"
 
 # The base container network. It will be auto-created by this role if it doesn't exist already.
 couchdb_container_network: "{{ couchdb_identifier }}"
