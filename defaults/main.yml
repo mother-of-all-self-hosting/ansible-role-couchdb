@@ -18,7 +18,7 @@ couchdb_config_path: "{{ couchdb_base_path }}/config"
 couchdb_data_path: "{{ couchdb_base_path }}/data"
 
 # renovate: datasource=docker depName=library/couchdb versioning=semver
-couchdb_version: 3.5.1
+couchdb_version: 3.5.2
 
 couchdb_uid: ""
 couchdb_gid: ""
