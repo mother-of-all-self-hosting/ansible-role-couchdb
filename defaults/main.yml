@@ -222,6 +222,8 @@ couchdb_container_cleanup_command: |
 
 couchdb_connection_hostname: "{{ couchdb_identifier }}"
 couchdb_connection_port: 5984
+
+# Specify the admin user's username and password
 couchdb_root_username: root
 couchdb_root_password: ""
 
@@ -252,9 +254,7 @@ couchdb_config_loglevel: info
 # Specify server administrators
 # See: https://docs.couchdb.org/en/stable/config/auth.html#admins
 couchdb_admins: "{{ couchdb_admins_auto + couchdb_admins_custom }}"
-couchdb_admins_auto:
-  - user: "{{ couchdb_root_username }}"
-    password: "{{ couchdb_root_password }}"
+couchdb_admins_auto: []
 couchdb_admins_custom: []
 
 # Specify value for "secret" of authentication configuration

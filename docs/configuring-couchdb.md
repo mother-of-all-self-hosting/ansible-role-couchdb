@@ -57,9 +57,7 @@ couchdb_root_password: YOUR_ADMIN_PASSWORD_HERE
 ```
 
 >[!NOTE]
->
-> - CouchDB requires a server administrator account to start. If one has not been created, CouchDB will print an error message and terminate. See [this section](#creating-users) below for details about how to create it.
-> - After installing the CouchDB it will be possible to create other administrator accounts on its web UI.
+> After installing the CouchDB it will be possible to create other administrator accounts on its web UI.
 
 ### Specify users (optional)
 
