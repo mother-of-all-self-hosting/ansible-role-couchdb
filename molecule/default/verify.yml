@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: 2026 Suguru Hirahara
+# SPDX-FileCopyrightText: 2026 spatterlight
+#
+# SPDX-License-Identifier: AGPL-3.0-or-later
+
+---
+- name: Verify CouchDB systemd service
+  hosts: all
+  become: true
+  gather_facts: false
+  tasks:
+    - name: Wait for CouchDB service to become active (up to 180s)
+      ansible.builtin.systemd:
+        name: couchdb.service
+      register: couchdb_service
+      until: couchdb_service.status.ActiveState == 'active'
+      retries: 36
+      delay: 5
+
+    - name: Assert CouchDB service is active
+      ansible.builtin.assert:
+        that: couchdb_service.status.ActiveState == 'active'
+        fail_msg: "couchdb.service not active ({{ couchdb_service.status.ActiveState }})"
+        success_msg: "couchdb.service is active"
+
+    - name: Retrieve CouchDB service log for debugging
+      when: couchdb_debug_service_enabled | bool
+      ansible.builtin.command:
+        cmd: journalctl -xeu couchdb.service
+      changed_when: false
+
+    - name: Wait for CouchDB HTTP endpoint to respond (up to 10m)
+      ansible.builtin.uri:
+        url: "http://localhost:5984/"
+        method: GET
+        status_code: [200, 302]
+        follow_redirects: none
+      register: couchdb_endpoint
+      until: couchdb_endpoint.status in [200, 302]
+      retries: 120
+      delay: 5
+
+    - name: Assert CouchDB HTTP endpoint responds
+      ansible.builtin.assert:
+        that: couchdb_endpoint.status in [200, 302]
+        fail_msg: "CouchDB did not respond as expected ({{ couchdb_endpoint.status | default('no response') }})"
+        success_msg: "CouchDB responded with {{ couchdb_endpoint.status }}"
+
+    - name: Show CouchDB systemd service status summary
+      ansible.builtin.debug:
+        msg:
+          - "CouchDB systemd: {{ couchdb_service.status.ActiveState }}"
+          - "CouchDB HTTP: {{ couchdb_endpoint.status }}"
