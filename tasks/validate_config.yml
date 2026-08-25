@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2023 Julian-Samuel Gebühr
 # SPDX-FileCopyrightText: 2023 MASH project contributors
-# SPDX-FileCopyrightText: 2023-2025 Slavi Pantaleev
+# SPDX-FileCopyrightText: 2023-2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2024 Bergrübe
 # SPDX-FileCopyrightText: 2025, 2026 Suguru Hirahara
 #
@@ -25,6 +25,25 @@
     - couchdb_uid
     - couchdb_gid
     - couchdb_container_network
+
+# CouchDB 3.x removed "Admin Party" mode and its container image refuses to
+# start ("ERROR: CouchDB 3.0+ will no longer run in Admin Party mode") unless
+# an `[admins]` entry exists in one of its configuration files. The role can
+# supply one in two ways: via the `COUCHDB_USER`/`COUCHDB_PASSWORD` pair in the
+# environment file (which the image's entrypoint only honors when *both* are
+# non-empty), or via `couchdb_admins` in local.ini.
+#
+# Without either, the container exits with status 1 on every start. Because the
+# systemd service uses `Restart=always`, systemd keeps the unit in the `active`
+# state while it restarts, so the failure is easy to miss.
+- name: Fail if no CouchDB administrator account is configured
+  ansible.builtin.fail:
+    msg: >-
+      You need to define an administrator account for CouchDB, either by
+      setting both `couchdb_root_username` and `couchdb_root_password`, or by
+      listing administrators in `couchdb_admins_custom`. CouchDB 3.x refuses to
+      start without one.
+  when: "(couchdb_root_username | string | length == 0 or couchdb_root_password | string | length == 0) and couchdb_admins | length == 0"
 
 - name: Run if Traefik is enabled
   when: couchdb_container_labels_traefik_enabled | bool
