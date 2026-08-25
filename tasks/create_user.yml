@@ -1,4 +1,5 @@
 # SPDX-FileCopyrightText: 2024 Bergrübe
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
@@ -11,13 +12,29 @@
     name: "{{ couchdb_identifier }}"
     state: started
     daemon_reload: true
-  register: couchdb_start
 
-- name: Wait a while, so that CouchDB can manage to start
-  ansible.builtin.pause:
-    seconds: 7
-  when: couchdb_start.changed | bool
+# Replaces a blind 7-second pause. `/_up` is CouchDB's own readiness endpoint
+# and stays reachable without credentials even when
+# `couchdb_config_require_valid_user_except_for_up` is on. Until the container
+# exists, `docker exec` itself fails, which is retried the same way.
+- name: Wait for CouchDB to report itself up
+  ansible.builtin.command:
+    cmd: |-
+      {{ devture_systemd_docker_base_host_command_docker }} exec
+      {{ couchdb_identifier }}
+      curl -fsS http://localhost:5984/_up
+  register: couchdb_up_output
+  until: couchdb_up_output.rc | default(1) == 0 and '"status":"ok"' in couchdb_up_output.stdout | default('')
+  retries: 30
+  delay: 2
+  changed_when: false
 
+# CouchDB creates `_users` and `_replicator` on its own when `single_node` is
+# enabled, and it does so asynchronously, some time after `/_up` starts
+# answering. A `PUT` that lands while CouchDB is in the middle of creating one
+# of them does not get the `file_exists` that a finished database returns - it
+# gets `{"error":"error","reason":"conflict"}` from the shard map update - so
+# the request is retried until the database is there one way or the other.
 - name: Ensure CouchDB system tables are created
   ansible.builtin.command:
     cmd: |-
@@ -25,6 +42,9 @@
       {{ couchdb_identifier }}
       curl -X PUT http://{{ couchdb_root_username }}:{{ couchdb_root_password }}@localhost:5984/{{ item.name }}
   register: couchdb_tables_output
+  until: couchdb_tables_output.stdout.find('{"ok":true}') != -1 or couchdb_tables_output.stdout.find('"file_exists"') != -1
+  retries: 10
+  delay: 3
   changed_when: couchdb_tables_output.stdout.find('{"ok":true}') != -1
   failed_when: couchdb_tables_output.stdout.find('{"ok":true}') == -1 and couchdb_tables_output.stdout.find('"file_exists"') == -1
   loop: "{{ couchdb_tables }}"
