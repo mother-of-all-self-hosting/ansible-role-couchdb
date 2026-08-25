@@ -59,6 +59,18 @@ couchdb_root_password: YOUR_ADMIN_PASSWORD_HERE
 >[!NOTE]
 > After installing the CouchDB it will be possible to create other administrator accounts on its web UI.
 
+An administrator account is mandatory. CouchDB 3.x refuses to start without one (it no longer supports the old "Admin Party" mode, in which every request was treated as an administrator's), so the role fails early if neither `couchdb_root_username` + `couchdb_root_password` nor `couchdb_admins_custom` is set.
+
+### Requiring authentication for all requests
+
+By default (`couchdb_config_require_valid_user_except_for_up: true`), CouchDB rejects requests from anonymous users with `401 Unauthorized`. The only exception is the `/_up` health endpoint, which stays reachable without credentials so that monitoring and container health checks keep working.
+
+Setting the variable to `false` makes CouchDB fall back to per-database authorization: databases whose `_security` document lists no members are readable (and writable) by anyone who can reach the instance. Since `couchdb_default_permissions` grants membership to nobody, that combination leaves every database created through `couchdb_tables_custom` open to anonymous access. Only turn it off if you know that is what you want, and set `couchdb_tables_custom[].permission` accordingly.
+
+```yaml
+couchdb_config_require_valid_user_except_for_up: true
+```
+
 ### Specify users (optional)
 
 You can create users by specifying ones with `couchdb_users_custom` as below on your `vars.yml` file:

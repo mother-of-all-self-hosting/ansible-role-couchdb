@@ -1,5 +1,6 @@
 {#
 SPDX-FileCopyrightText: 2024 Bergrübe
+SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 
 SPDX-License-Identifier: AGPL-3.0-or-later
 #}
@@ -19,7 +20,11 @@ delete_dbs = {{ couchdb_config_peruser_delete_dbs | to_json }}
 
 [chttpd]
 bind_address = 0.0.0.0
-require_valid_user_except_for_up = {{ couchdb_config_require_valid_user_except_for_up }}
+; `| to_json` matters here. CouchDB's `config:get_boolean/3` only recognizes the
+; literal strings `true` and `false` and silently falls back to its own default
+; for anything else, so the `True` that Jinja renders for a Python boolean turns
+; this into the default (`false`) and lets anonymous requests through.
+require_valid_user_except_for_up = {{ couchdb_config_require_valid_user_except_for_up | to_json }}
 
 [log]
 level = {{ couchdb_config_loglevel }}
