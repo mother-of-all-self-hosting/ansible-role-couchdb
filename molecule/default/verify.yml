@@ -178,38 +178,38 @@
 
     - name: Assert the [couchdb] section reached the CouchDB process
       ansible.builtin.assert:
-        that: couchdb_live_config.couchdb.single_node == 'true'
+        that: couchdb_live_config.couchdb.single_node | default('unset') == 'true'
         fail_msg: "[couchdb] is {{ couchdb_live_config.couchdb }}, expected single_node = true"
         success_msg: "[couchdb] single_node is live"
 
     - name: Assert the [couch_peruser] section reached the CouchDB process
       ansible.builtin.assert:
         that:
-          - couchdb_live_config.couch_peruser.enable == 'true'
-          - couchdb_live_config.couch_peruser.delete_dbs == 'false'
+          - couchdb_live_config.couch_peruser.enable | default('unset') == 'true'
+          - couchdb_live_config.couch_peruser.delete_dbs | default('unset') == 'false'
         fail_msg: "[couch_peruser] is {{ couchdb_live_config.couch_peruser }}"
         success_msg: "[couch_peruser] is live"
 
     - name: Assert the [chttpd] section reached the CouchDB process
       ansible.builtin.assert:
         that:
-          - couchdb_live_config.chttpd.bind_address == '0.0.0.0'
+          - couchdb_live_config.chttpd.bind_address | default('unset') == '0.0.0.0'
           # Lowercase, and not the `True` that Jinja renders for a Python
           # boolean - CouchDB's config:get_boolean/3 discards anything else and
           # silently falls back to its own default of `false`.
-          - couchdb_live_config.chttpd.require_valid_user_except_for_up == 'true'
+          - couchdb_live_config.chttpd.require_valid_user_except_for_up | default('unset') == 'true'
         fail_msg: "[chttpd] is {{ couchdb_live_config.chttpd }}"
         success_msg: "[chttpd] is live, with require_valid_user_except_for_up parsed as a boolean"
 
     - name: Assert the [log] section reached the CouchDB process
       ansible.builtin.assert:
-        that: couchdb_live_config.log.level == couchdb_config_loglevel
+        that: couchdb_live_config.log.level | default('unset') == couchdb_config_loglevel
         fail_msg: "[log] level is {{ couchdb_live_config.log.level | default('unset') }}, expected {{ couchdb_config_loglevel }}"
         success_msg: "[log] level is {{ couchdb_config_loglevel }}, as configured"
 
     - name: Assert couchdb_config_extension reached the CouchDB process
       ansible.builtin.assert:
-        that: couchdb_live_config.mash_molecule.marker == 'rendered-by-the-mash-couchdb-role'
+        that: couchdb_live_config.mash_molecule.marker | default('unset') == 'rendered-by-the-mash-couchdb-role'
         fail_msg: "[mash_molecule] is {{ couchdb_live_config.mash_molecule }}"
         success_msg: "couchdb_config_extension was appended to local.ini and is live"
 
