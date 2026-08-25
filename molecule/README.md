@@ -1,5 +1,5 @@
 <!--
-SPDX-FileCopyrightText: 2018-2025 Slavi Pantaleev
+SPDX-FileCopyrightText: 2018-2026 Slavi Pantaleev
 SPDX-FileCopyrightText: 2019-2022 Aaron Raimist
 SPDX-FileCopyrightText: 2019-2023 MDAD project contributors
 SPDX-FileCopyrightText: 2023 QEDeD
@@ -48,6 +48,14 @@ Currently there is one testing scenario available.
 ### `default`
 
 Tests a standard CouchDB installation.
+
+Beyond installing the role, it exercises what the role actually configures:
+
+- the running CouchDB reports the version that `couchdb_version` pins
+- `local.ini` is checked through CouchDB's own `_config` API (`single_node`, `couch_peruser`, `bind_address`, `require_valid_user_except_for_up`, the log level and a marker appended through `couchdb_config_extension`), so the assertions fail if the file does not reach the process
+- an anonymous request to `/` is required to be rejected with `401`, while `/_up` must stay reachable without credentials
+- the databases, the account and the `_security` document from `couchdb_tables_custom` / `couchdb_users_custom` are created through `tasks/create_user.yml` and verified afterwards - that task hides its own failures behind `no_log` and `ignore_errors`, so this is its only coverage
+- a document is written by the created account, read back, listed through `_all_docs`, refused to an anonymous client, and located on disk under the role's own data path
 
 ## Running
 

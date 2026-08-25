@@ -1,3 +1,4 @@
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2026 spatterlight
 # SPDX-FileCopyrightText: 2026 Suguru Hirahara
 #
@@ -38,8 +39,58 @@ provisioner:
         couchdb_hostname: localhost
         couchdb_container_labels_traefik_enabled: false
         couchdb_container_http_host_bind_port: 5984
-        couchdb_root_username: root
-        couchdb_root_password: password
+        couchdb_root_username: mash-admin
+        couchdb_root_password: molecule-admin-password
+
+        # Everything below is deliberately set to a value that differs from
+        # what an unconfigured `couchdb` image reports, so that verify.yml can
+        # tell a local.ini rendered by this role apart from CouchDB's own
+        # built-in defaults. See the table at the top of verify.yml.
+
+        # An unconfigured image generates a random UUID on first boot and
+        # reports it on `/`; this one can only come from the role's template.
+        couchdb_config_uuid: 5ee9ea1b0ad94d7f9c0aa9a4b8b7c3d1
+
+        # CouchDB's own default is `info`, and an unconfigured image reports no
+        # `[log] level` at all through `/_node/_local/_config/log`.
+        couchdb_config_loglevel: warning
+
+        # `[couch_peruser] enable` is `false` upstream. With it on, creating a
+        # user makes CouchDB create a `userdb-<hex(name)>` database, which is
+        # observable proof that this section of local.ini reached the process.
+        couchdb_config_peruser_enabled: true
+        couchdb_config_peruser_delete_dbs: false
+
+        # The role's documented default. Renders as `true` in local.ini and
+        # makes anonymous requests to anything but `/_up` fail with 401, which
+        # is what verify.yml uses as its negative control - an unconfigured
+        # image answers `/` with 200.
+        couchdb_config_require_valid_user_except_for_up: true
+
+        # Appended verbatim to local.ini. CouchDB echoes unknown sections back
+        # through its `_config` API, so this is a marker that nothing but this
+        # role's template could have produced.
+        couchdb_config_extension: |
+          [mash_molecule]
+          marker = rendered-by-the-mash-couchdb-role
+
+        # Exercises tasks/create_user.yml: the database, the user and the
+        # `_security` document all get created through it.
+        couchdb_tables_custom:
+          - name: mash-molecule
+            permission:
+              admins:
+                names: []
+                roles: []
+              members:
+                names:
+                  - molecule-user
+                roles: []
+        couchdb_users_custom:
+          - name: molecule-user
+            password: molecule-user-password
+            roles: []
+            type: user
   env:
     # Workaround for https://github.com/ansible/molecule/issues/4391
     ANSIBLE_ROLES_PATH: ${MOLECULE_PROJECT_DIRECTORY}/..:/.ansible/roles:/usr/share/ansible/roles:/etc/ansible/roles:~/.ansible/roles
@@ -53,7 +104,12 @@ scenario:
     - create
     - prepare
     - converge
-    # Disable idempotence test for now due to /couchdb/config/local.ini being changed every time
+    # No idempotence test. CouchDB persists runtime configuration changes into
+    # the last file of its ini chain, which is the local.ini this role renders
+    # into /opt/couchdb/etc/local.d - it writes the generated node UUID, the
+    # generated `[chttpd_auth] secret` and the PBKDF2 hash of the admin
+    # password back into it. A second converge therefore always re-renders the
+    # file and reports `changed`.
     # - idempotence
     - side_effect
     - verify

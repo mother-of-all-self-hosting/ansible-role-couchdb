@@ -1,9 +1,16 @@
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2026 spatterlight
 # SPDX-FileCopyrightText: 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
+# Including the role runs tasks/main.yml in full, which means the
+# `create-user-couchdb` block runs here too: tags only narrow a run down when
+# `--tags` is passed, and Molecule passes none. tasks/create_user.yml is
+# therefore covered, which matters because its user-creation task carries both
+# `no_log: true` and `ignore_errors: true` - a failure there is invisible in
+# the output, and only verify.yml can catch it.
 - name: Include roles for CouchDB Molecule tests
   hosts: all
   become: true

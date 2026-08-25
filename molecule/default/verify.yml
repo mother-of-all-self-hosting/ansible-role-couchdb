@@ -1,13 +1,51 @@
+# SPDX-FileCopyrightText: 2026 Slavi Pantaleev
 # SPDX-FileCopyrightText: 2026 spatterlight
 # SPDX-FileCopyrightText: 2026 Suguru Hirahara
 #
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 ---
-- name: Verify CouchDB systemd service
+# An unconfigured `couchdb` image is a working CouchDB. Started with nothing
+# but `COUCHDB_USER`/`COUCHDB_PASSWORD` it answers `/` with 200 and a full
+# welcome document, answers `/_up` with `{"status":"ok"}`, and lets an
+# anonymous client through. "The unit is active" and "port 5984 answered" are
+# therefore worth nothing here - `Restart=always` in the systemd unit even
+# keeps the unit `active` while a container crash-loops.
+#
+# Every assertion below is written so that it would fail against such an image.
+# What each one relies on:
+#
+#   observation                       unconfigured image   this role
+#   --------------------------------  -------------------  --------------------
+#   anonymous GET /                   200 Welcome          401 unauthorized
+#   /_node/.../_config/couchdb        no `single_node`     single_node = true
+#   `uuid` reported on /              random per boot      couchdb_config_uuid
+#   /_node/.../_config/couch_peruser  {}                   enable = true
+#   /_node/.../_config/log            {}                   level = warning
+#   /_node/.../_config/mash_molecule  {}                   the marker string
+#   /_all_dbs                         []                   the role's databases
+#   userdb-<hex> database             never created        created per user
+#
+# The database/user/permission assertions additionally cover
+# tasks/create_user.yml, whose user-creation task is `no_log: true` plus
+# `ignore_errors: true` and so cannot report its own failure.
+- name: Verify CouchDB
   hosts: all
   become: true
   gather_facts: false
+
+  vars:
+    couchdb_verify_base_url: "http://localhost:5984"
+
+    # `couchdb_data_path` is derived from `couchdb_base_path` through Jinja and
+    # so cannot be read out of defaults/main.yml. Spelled out on purpose, so
+    # that a change to the default which breaks the bind mount is noticed here.
+    couchdb_verify_data_path: /couchdb/data
+
+    # `couch_peruser` names the per-user database after the hex encoding of the
+    # user name: hex('molecule-user') == '6d6f6c6563756c652d75736572'.
+    couchdb_verify_peruser_database: userdb-6d6f6c6563756c652d75736572
+
   tasks:
     - name: Wait for CouchDB service to become active (up to 180s)
       ansible.builtin.systemd:
@@ -17,6 +55,9 @@
       retries: 36
       delay: 5
 
+    # A smoke test and nothing more: `Restart=always` makes systemd report
+    # `active` for a container that exits on every start. The assertions below
+    # are what actually decide whether the role works.
     - name: Assert CouchDB service is active
       ansible.builtin.assert:
         that: couchdb_service.status.ActiveState == 'active'
@@ -29,25 +70,281 @@
         cmd: journalctl -xeu couchdb.service
       changed_when: false
 
-    - name: Wait for CouchDB HTTP endpoint to respond (up to 10m)
+    # Read only for `couchdb_version`, the leaf literal that Renovate bumps.
+    # Loaded under a name of its own, because a plain `include_vars` outranks
+    # this scenario's group_vars and would silently undo them.
+    - name: Read the role's defaults
+      ansible.builtin.include_vars:
+        file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
+        name: couchdb_role_defaults
+
+    # `/_up` is the honest readiness gate. `/` answers before the node has
+    # finished setting itself up, and with `require_valid_user_except_for_up`
+    # on it answers 401 to an anonymous client anyway.
+    - name: Wait for CouchDB to report itself up (up to 5m)
       ansible.builtin.uri:
-        url: "http://localhost:5984/"
+        url: "{{ couchdb_verify_base_url }}/_up"
         method: GET
-        status_code: [200, 302]
         follow_redirects: none
-      register: couchdb_endpoint
-      until: couchdb_endpoint.status in [200, 302]
-      retries: 120
+      register: couchdb_up
+      # Guarded with `default`, because a connection refused while the
+      # container is still booting produces a result with no `json` at all.
+      until: couchdb_up.status | default(0) == 200 and couchdb_up.json.status | default('') == 'ok'
+      retries: 60
       delay: 5
 
-    - name: Assert CouchDB HTTP endpoint responds
+    - name: Assert CouchDB reports itself up without credentials
       ansible.builtin.assert:
-        that: couchdb_endpoint.status in [200, 302]
-        fail_msg: "CouchDB did not respond as expected ({{ couchdb_endpoint.status | default('no response') }})"
-        success_msg: "CouchDB responded with {{ couchdb_endpoint.status }}"
+        that:
+          - couchdb_up.status == 200
+          - couchdb_up.json.status == 'ok'
+        fail_msg: "/_up did not report ok ({{ couchdb_up.json | default('no response') }})"
+        success_msg: "/_up reports ok and stays reachable anonymously"
 
-    - name: Show CouchDB systemd service status summary
+    # The negative control. An unconfigured image answers this with 200 and the
+    # welcome document; anything but a 401 here means
+    # `couchdb_config_require_valid_user_except_for_up` did not reach CouchDB,
+    # which is a security problem and not a test problem.
+    - name: Request the CouchDB root endpoint without credentials
+      ansible.builtin.uri:
+        url: "{{ couchdb_verify_base_url }}/"
+        method: GET
+        status_code: 401
+        follow_redirects: none
+      register: couchdb_anonymous_root
+
+    - name: Assert anonymous requests are rejected
+      ansible.builtin.assert:
+        that: couchdb_anonymous_root.status == 401
+        fail_msg: "Anonymous GET / returned {{ couchdb_anonymous_root.status }} instead of 401"
+        success_msg: "Anonymous requests are rejected with 401"
+
+    - name: Retrieve the CouchDB root endpoint as the administrator
+      ansible.builtin.uri:
+        url: "{{ couchdb_verify_base_url }}/"
+        method: GET
+        url_username: "{{ couchdb_root_username }}"
+        url_password: "{{ couchdb_root_password }}"
+        force_basic_auth: true
+        follow_redirects: none
+      register: couchdb_root_endpoint
+
+    # This is what earns (or denies) automerge of a version bump: the CouchDB
+    # that is actually running has to be the one defaults/main.yml asks for.
+    # `versioning=semver` on the Renovate annotation keeps the value in the
+    # three-component form that CouchDB reports here, so an exact match is
+    # right; the four-component `3.5.2.1` image-rebuild tags that Docker Hub
+    # also publishes are not valid semver and are never proposed.
+    - name: Assert the running CouchDB is the version the role pins
+      ansible.builtin.assert:
+        that: couchdb_root_endpoint.json.version == couchdb_role_defaults.couchdb_version
+        fail_msg: >-
+          CouchDB reports {{ couchdb_root_endpoint.json.version }},
+          but couchdb_version is {{ couchdb_role_defaults.couchdb_version }}
+        success_msg: "CouchDB runs {{ couchdb_root_endpoint.json.version }}, as pinned"
+
+    - name: Assert the node carries the UUID this role configured
+      ansible.builtin.assert:
+        that: couchdb_root_endpoint.json.uuid == couchdb_config_uuid
+        fail_msg: >-
+          CouchDB reports UUID {{ couchdb_root_endpoint.json.uuid }},
+          but couchdb_config_uuid is {{ couchdb_config_uuid }}
+        success_msg: "CouchDB carries the configured node UUID"
+
+    - name: Retrieve the CouchDB configuration sections rendered by this role
+      ansible.builtin.uri:
+        url: "{{ couchdb_verify_base_url }}/_node/_local/_config/{{ item }}"
+        method: GET
+        url_username: "{{ couchdb_root_username }}"
+        url_password: "{{ couchdb_root_password }}"
+        force_basic_auth: true
+        follow_redirects: none
+      register: couchdb_config_sections
+      loop:
+        - couchdb
+        - couch_peruser
+        - chttpd
+        - log
+        - mash_molecule
+
+    - name: Collect the CouchDB configuration sections
+      ansible.builtin.set_fact:
+        couchdb_live_config: "{{ couchdb_live_config | default({}) | combine({item.item: item.json}) }}"
+      loop: "{{ couchdb_config_sections.results }}"
+      loop_control:
+        label: "{{ item.item }}"
+
+    - name: Assert the [couchdb] section reached the CouchDB process
+      ansible.builtin.assert:
+        that: couchdb_live_config.couchdb.single_node == 'true'
+        fail_msg: "[couchdb] is {{ couchdb_live_config.couchdb }}, expected single_node = true"
+        success_msg: "[couchdb] single_node is live"
+
+    - name: Assert the [couch_peruser] section reached the CouchDB process
+      ansible.builtin.assert:
+        that:
+          - couchdb_live_config.couch_peruser.enable == 'true'
+          - couchdb_live_config.couch_peruser.delete_dbs == 'false'
+        fail_msg: "[couch_peruser] is {{ couchdb_live_config.couch_peruser }}"
+        success_msg: "[couch_peruser] is live"
+
+    - name: Assert the [chttpd] section reached the CouchDB process
+      ansible.builtin.assert:
+        that:
+          - couchdb_live_config.chttpd.bind_address == '0.0.0.0'
+          # Lowercase, and not the `True` that Jinja renders for a Python
+          # boolean - CouchDB's config:get_boolean/3 discards anything else and
+          # silently falls back to its own default of `false`.
+          - couchdb_live_config.chttpd.require_valid_user_except_for_up == 'true'
+        fail_msg: "[chttpd] is {{ couchdb_live_config.chttpd }}"
+        success_msg: "[chttpd] is live, with require_valid_user_except_for_up parsed as a boolean"
+
+    - name: Assert the [log] section reached the CouchDB process
+      ansible.builtin.assert:
+        that: couchdb_live_config.log.level == couchdb_config_loglevel
+        fail_msg: "[log] level is {{ couchdb_live_config.log.level | default('unset') }}, expected {{ couchdb_config_loglevel }}"
+        success_msg: "[log] level is {{ couchdb_config_loglevel }}, as configured"
+
+    - name: Assert couchdb_config_extension reached the CouchDB process
+      ansible.builtin.assert:
+        that: couchdb_live_config.mash_molecule.marker == 'rendered-by-the-mash-couchdb-role'
+        fail_msg: "[mash_molecule] is {{ couchdb_live_config.mash_molecule }}"
+        success_msg: "couchdb_config_extension was appended to local.ini and is live"
+
+    - name: List the CouchDB databases
+      ansible.builtin.uri:
+        url: "{{ couchdb_verify_base_url }}/_all_dbs"
+        method: GET
+        url_username: "{{ couchdb_root_username }}"
+        url_password: "{{ couchdb_root_password }}"
+        force_basic_auth: true
+        follow_redirects: none
+      register: couchdb_all_dbs
+      # `couch_peruser` creates the per-user database asynchronously, off the
+      # `_users` changes feed, so it can lag behind the user creation.
+      until: couchdb_verify_peruser_database in couchdb_all_dbs.json
+      retries: 24
+      delay: 5
+
+    - name: Assert the databases this role asks for exist
+      ansible.builtin.assert:
+        that:
+          # `_users` and `_replicator` are created by CouchDB itself once
+          # `single_node` is on, but `_global_changes` is not - it only exists
+          # because tasks/create_user.yml created it.
+          - "'_users' in couchdb_all_dbs.json"
+          - "'_replicator' in couchdb_all_dbs.json"
+          - "'_global_changes' in couchdb_all_dbs.json"
+          - "'mash-molecule' in couchdb_all_dbs.json"
+          # Only ever created when `[couch_peruser] enable` is really on.
+          - couchdb_verify_peruser_database in couchdb_all_dbs.json
+        fail_msg: "Unexpected database list: {{ couchdb_all_dbs.json }}"
+        success_msg: "All expected databases exist: {{ couchdb_all_dbs.json }}"
+
+    - name: Retrieve the security document of the role-created database
+      ansible.builtin.uri:
+        url: "{{ couchdb_verify_base_url }}/mash-molecule/_security"
+        method: GET
+        url_username: "{{ couchdb_root_username }}"
+        url_password: "{{ couchdb_root_password }}"
+        force_basic_auth: true
+        follow_redirects: none
+      register: couchdb_security
+
+    - name: Assert the database permissions this role asks for are applied
+      ansible.builtin.assert:
+        that: couchdb_security.json == couchdb_tables_custom[0].permission
+        fail_msg: "_security is {{ couchdb_security.json }}, expected {{ couchdb_tables_custom[0].permission }}"
+        success_msg: "_security matches couchdb_tables_custom"
+
+    # Writing as the account from `couchdb_users_custom` is the only way to
+    # find out whether it was really created: the task that creates it hides
+    # both its output and its failures.
+    - name: Store a document as the role-created user
+      ansible.builtin.uri:
+        url: "{{ couchdb_verify_base_url }}/mash-molecule/mash-molecule-doc"
+        method: PUT
+        url_username: "{{ couchdb_users_custom[0].name }}"
+        url_password: "{{ couchdb_users_custom[0].password }}"
+        force_basic_auth: true
+        follow_redirects: none
+        body_format: json
+        body:
+          marker: round-trip
+          n: 7
+        status_code: 201
+      register: couchdb_document_write
+
+    - name: Read the document back as the role-created user
+      ansible.builtin.uri:
+        url: "{{ couchdb_verify_base_url }}/mash-molecule/mash-molecule-doc"
+        method: GET
+        url_username: "{{ couchdb_users_custom[0].name }}"
+        url_password: "{{ couchdb_users_custom[0].password }}"
+        force_basic_auth: true
+        follow_redirects: none
+      register: couchdb_document_read
+
+    - name: Query the database index
+      ansible.builtin.uri:
+        url: "{{ couchdb_verify_base_url }}/mash-molecule/_all_docs"
+        method: GET
+        url_username: "{{ couchdb_users_custom[0].name }}"
+        url_password: "{{ couchdb_users_custom[0].password }}"
+        force_basic_auth: true
+        follow_redirects: none
+      register: couchdb_all_docs
+
+    - name: Assert the document round-trip succeeded
+      ansible.builtin.assert:
+        that:
+          - couchdb_document_write.json.ok
+          - couchdb_document_read.json.marker == 'round-trip'
+          - couchdb_document_read.json.n == 7
+          - couchdb_document_read.json['_rev'] == couchdb_document_write.json.rev
+          - couchdb_all_docs.json.total_rows == 1
+          - couchdb_all_docs.json.rows[0].id == 'mash-molecule-doc'
+        fail_msg: "Document round-trip failed: {{ couchdb_document_read.json }}"
+        success_msg: "A document written by the role-created user reads back intact"
+
+    - name: Request the stored document without credentials
+      ansible.builtin.uri:
+        url: "{{ couchdb_verify_base_url }}/mash-molecule/mash-molecule-doc"
+        method: GET
+        status_code: 401
+        follow_redirects: none
+      register: couchdb_anonymous_document
+
+    - name: Assert stored documents are not readable anonymously
+      ansible.builtin.assert:
+        that: couchdb_anonymous_document.status == 401
+        fail_msg: >-
+          An anonymous client read a stored document
+          ({{ couchdb_anonymous_document.status }})
+        success_msg: "Stored documents are not readable anonymously"
+
+    # The write has to have landed in the directory the role bind-mounts, not
+    # somewhere inside the container's own filesystem.
+    - name: Look for the database files under the role's data path
+      ansible.builtin.find:
+        paths: "{{ couchdb_verify_data_path }}/shards"
+        patterns: "mash-molecule.*.couch"
+        recurse: true
+      register: couchdb_shard_files
+
+    - name: Assert the data landed under the role's data path
+      ansible.builtin.assert:
+        that: couchdb_shard_files.matched > 0
+        fail_msg: "No mash-molecule shard files under {{ couchdb_verify_data_path }}/shards"
+        success_msg: >-
+          {{ couchdb_shard_files.matched }} shard file(s) for mash-molecule
+          under {{ couchdb_verify_data_path }}/shards
+
+    - name: Show CouchDB verification summary
       ansible.builtin.debug:
         msg:
           - "CouchDB systemd: {{ couchdb_service.status.ActiveState }}"
-          - "CouchDB HTTP: {{ couchdb_endpoint.status }}"
+          - "CouchDB version: {{ couchdb_root_endpoint.json.version }}"
+          - "CouchDB node UUID: {{ couchdb_root_endpoint.json.uuid }}"
+          - "CouchDB databases: {{ couchdb_all_dbs.json | join(', ') }}"
+          - "Anonymous GET /: {{ couchdb_anonymous_root.status }}"
