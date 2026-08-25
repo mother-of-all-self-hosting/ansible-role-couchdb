@@ -109,7 +109,9 @@
       ansible.builtin.uri:
         url: "{{ couchdb_verify_base_url }}/"
         method: GET
-        status_code: 401
+        # 200 is accepted here so that the assertion below is what fails when
+        # anonymous access is open, rather than this request cascading into it.
+        status_code: [200, 401]
         follow_redirects: none
       register: couchdb_anonymous_root
 
@@ -311,7 +313,9 @@
       ansible.builtin.uri:
         url: "{{ couchdb_verify_base_url }}/mash-molecule/mash-molecule-doc"
         method: GET
-        status_code: 401
+        # As above: 200 is accepted so that the assertion, and not this
+        # request, is what reports an anonymously readable database.
+        status_code: [200, 401]
         follow_redirects: none
       register: couchdb_anonymous_document
 
