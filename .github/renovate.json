@@ -9,6 +9,6 @@
     "`versioning=semver` on the annotation in defaults/main.yml is what keeps the tag list sane. docker.io/library/couchdb publishes each release twice - `3.5.2` and `3.5.2-nouveau` (the Lucene-backed search flavour, which this role does not deploy) - plus floating `3`, `3.5` and `latest` tags. Strict semver reads the flavoured tags as prereleases and skips them as unstable. It also skips the four-component image-rebuild tags Docker Hub occasionally carries, such as `3.5.2.1`, which upstream publishes when it refreshes the Erlang/OTP inside an already released CouchDB; `3.5.2.1` and `3.5.2` resolve to the same manifest digest, so nothing is lost by ignoring them, and the exact version assertion in the Molecule scenario would fail against a four-component value anyway, since CouchDB reports three."
   ],
   "extends": [
-    "github>mother-of-all-self-hosting/renovate-config#v1.0.0"
+    "github>mother-of-all-self-hosting/renovate-config#v1.1.0"
   ]
 }
