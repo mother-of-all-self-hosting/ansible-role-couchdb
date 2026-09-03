@@ -131,13 +131,11 @@
         follow_redirects: none
       register: couchdb_root_endpoint
 
-    - name: Assert the running CouchDB is the version the role pins
+    - name: Assert the running CouchDB is the version this role installs
       ansible.builtin.assert:
         that: couchdb_root_endpoint.json.version == couchdb_role_defaults.couchdb_version
-        fail_msg: >-
-          CouchDB reports {{ couchdb_root_endpoint.json.version }},
-          but couchdb_version is {{ couchdb_role_defaults.couchdb_version }}
-        success_msg: "CouchDB runs {{ couchdb_root_endpoint.json.version }}, as pinned"
+        fail_msg: "CouchDB reports {{ couchdb_root_endpoint.json.version | default('none') }}, expected {{ couchdb_role_defaults.couchdb_version }}"
+        success_msg: "CouchDB reports {{ couchdb_root_endpoint.json.version }}"
 
     - name: Assert the node carries the UUID this role configured
       ansible.builtin.assert:
