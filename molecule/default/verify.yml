@@ -131,12 +131,6 @@
         follow_redirects: none
       register: couchdb_root_endpoint
 
-    # This is what earns (or denies) automerge of a version bump: the CouchDB
-    # that is actually running has to be the one defaults/main.yml asks for.
-    # `versioning=semver` on the Renovate annotation keeps the value in the
-    # three-component form that CouchDB reports here, so an exact match is
-    # right; the four-component `3.5.2.1` image-rebuild tags that Docker Hub
-    # also publishes are not valid semver and are never proposed.
     - name: Assert the running CouchDB is the version the role pins
       ansible.builtin.assert:
         that: couchdb_root_endpoint.json.version == couchdb_role_defaults.couchdb_version
