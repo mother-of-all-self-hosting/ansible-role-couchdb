@@ -336,7 +336,7 @@
           {{ couchdb_shard_files.matched }} shard file(s) for mash-molecule
           under {{ couchdb_verify_data_path }}/shards
 
-    - name: Show CouchDB verification summary
+    - name: Show the CouchDB verification summary
       ansible.builtin.debug:
         msg:
           - "CouchDB systemd: {{ couchdb_service.status.ActiveState }}"
