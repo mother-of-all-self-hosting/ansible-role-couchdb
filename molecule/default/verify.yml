@@ -70,13 +70,13 @@
         cmd: journalctl -xeu couchdb.service
       changed_when: false
 
-    # Read only for `couchdb_version`, the leaf literal that Renovate bumps.
-    # Loaded under a name of its own, because a plain `include_vars` outranks
-    # this scenario's group_vars and would silently undo them.
-    - name: Read the role's defaults
+    # The role is not included in this playbook, so its defaults are not in
+    # scope. Reading defaults/main.yml directly ties the version assertion
+    # below.
+    - name: Load the role defaults
       ansible.builtin.include_vars:
         file: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') }}/defaults/main.yml"
-        name: couchdb_role_defaults
+        name: couchdb_defaults
 
     # `/_up` is the honest readiness gate. `/` answers before the node has
     # finished setting itself up, and with `require_valid_user_except_for_up`
@@ -133,8 +133,8 @@
 
     - name: Assert the running CouchDB is the version this role installs
       ansible.builtin.assert:
-        that: couchdb_root_endpoint.json.version == couchdb_role_defaults.couchdb_version
-        fail_msg: "CouchDB reports {{ couchdb_root_endpoint.json.version | default('none') }}, expected {{ couchdb_role_defaults.couchdb_version }}"
+        that: couchdb_root_endpoint.json.version == couchdb_defaults.couchdb_version
+        fail_msg: "CouchDB reports {{ couchdb_root_endpoint.json.version | default('none') }}, expected {{ couchdb_defaults.couchdb_version }}"
         success_msg: "CouchDB reports {{ couchdb_root_endpoint.json.version }}"
 
     - name: Assert the node carries the UUID this role configured
