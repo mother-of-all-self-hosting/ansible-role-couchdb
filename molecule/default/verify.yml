@@ -47,24 +47,27 @@
     couchdb_verify_peruser_database: userdb-6d6f6c6563756c652d75736572
 
   tasks:
-    - name: Wait for CouchDB service to become active (up to 180s)
-      ansible.builtin.systemd:
+    - name: Wait for the CouchDB systemd service to become active (up to 180s)
+      ansible.builtin.systemd_service:
         name: couchdb.service
       register: couchdb_service
       until: couchdb_service.status.ActiveState == 'active'
       retries: 36
       delay: 5
+      # So that giving up is reported by the assertion below rather than as a
+      # wall of systemd unit properties.
+      failed_when: false
 
-    # A smoke test and nothing more: `Restart=always` makes systemd report
-    # `active` for a container that exits on every start. The assertions below
-    # are what actually decide whether the role works.
-    - name: Assert CouchDB service is active
+    # `Restart=always` in the systemd unit means that even a container which crashes
+    # and gets restarted reads as active here, so this is a precondition rather than
+    # a result.
+    - name: Assert the CouchDB systemd service is active
       ansible.builtin.assert:
         that: couchdb_service.status.ActiveState == 'active'
-        fail_msg: "couchdb.service not active ({{ couchdb_service.status.ActiveState }})"
+        fail_msg: "couchdb.service is not active ({{ couchdb_service.status.ActiveState }})"
         success_msg: "couchdb.service is active"
 
-    - name: Retrieve CouchDB service log for debugging
+    - name: Retrieve the CouchDB systemd service log for debugging
       when: couchdb_debug_service_enabled | bool
       ansible.builtin.command:
         cmd: journalctl -xeu couchdb.service
