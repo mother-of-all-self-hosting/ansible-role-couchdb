@@ -101,6 +101,22 @@
         fail_msg: "/_up did not report ok ({{ couchdb_up.json | default('no response') }})"
         success_msg: "/_up reports ok and stays reachable anonymously"
 
+    - name: Retrieve the CouchDB root endpoint as the administrator
+      ansible.builtin.uri:
+        url: "{{ couchdb_verify_base_url }}/"
+        method: GET
+        url_username: "{{ couchdb_root_username }}"
+        url_password: "{{ couchdb_root_password }}"
+        force_basic_auth: true
+        follow_redirects: none
+      register: couchdb_root_endpoint
+
+    - name: Assert the running CouchDB is the version this role installs
+      ansible.builtin.assert:
+        that: couchdb_root_endpoint.json.version == couchdb_defaults.couchdb_version
+        fail_msg: "CouchDB reports {{ couchdb_root_endpoint.json.version | default('none') }}, expected {{ couchdb_defaults.couchdb_version }}"
+        success_msg: "CouchDB reports {{ couchdb_root_endpoint.json.version }}"
+
     # The negative control. An unconfigured image answers this with 200 and the
     # welcome document; anything but a 401 here means
     # `couchdb_config_require_valid_user_except_for_up` did not reach CouchDB,
@@ -120,22 +136,6 @@
         that: couchdb_anonymous_root.status == 401
         fail_msg: "Anonymous GET / returned {{ couchdb_anonymous_root.status }} instead of 401"
         success_msg: "Anonymous requests are rejected with 401"
-
-    - name: Retrieve the CouchDB root endpoint as the administrator
-      ansible.builtin.uri:
-        url: "{{ couchdb_verify_base_url }}/"
-        method: GET
-        url_username: "{{ couchdb_root_username }}"
-        url_password: "{{ couchdb_root_password }}"
-        force_basic_auth: true
-        follow_redirects: none
-      register: couchdb_root_endpoint
-
-    - name: Assert the running CouchDB is the version this role installs
-      ansible.builtin.assert:
-        that: couchdb_root_endpoint.json.version == couchdb_defaults.couchdb_version
-        fail_msg: "CouchDB reports {{ couchdb_root_endpoint.json.version | default('none') }}, expected {{ couchdb_defaults.couchdb_version }}"
-        success_msg: "CouchDB reports {{ couchdb_root_endpoint.json.version }}"
 
     - name: Assert the node carries the UUID this role configured
       ansible.builtin.assert:
