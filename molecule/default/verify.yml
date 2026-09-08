@@ -70,7 +70,7 @@
     - name: Retrieve the CouchDB systemd service log for debugging
       when: couchdb_debug_service_enabled | bool
       ansible.builtin.command:
-        cmd: journalctl -xeu couchdb.service
+        cmd: journalctl --no-pager --output=cat --unit=couchdb.service
       changed_when: false
 
     # The role is not included in this playbook, so its defaults are not in
