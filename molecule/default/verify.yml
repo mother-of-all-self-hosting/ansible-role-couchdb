@@ -46,16 +46,20 @@
     # user name: hex('molecule-user') == '6d6f6c6563756c652d75736572'.
     couchdb_verify_peruser_database: userdb-6d6f6c6563756c652d75736572
 
+    couchdb_verify_units:
+      - couchdb.service
+
   tasks:
     - name: Verify that CouchDB works
       block:
-        - name: Wait for the CouchDB systemd service to become active (up to 180s)
+        - name: Wait for the CouchDB systemd services to become active (up to 180s each)
           ansible.builtin.systemd_service:
-            name: couchdb.service
-          register: couchdb_service
-          until: couchdb_service.status.ActiveState == 'active'
+            name: "{{ item }}"
+          register: couchdb_services
+          until: couchdb_services.status.ActiveState == 'active'
           retries: 36
           delay: 5
+          loop: "{{ couchdb_verify_units }}"
           # So that giving up is reported by the assertion below rather than as a
           # wall of systemd unit properties.
           failed_when: false
@@ -63,17 +67,20 @@
         # `Restart=always` in the systemd unit means that even a container which crashes
         # and gets restarted reads as active here, so this is a precondition rather than
         # a result.
-        - name: Assert the CouchDB systemd service is active
+        - name: Assert the CouchDB systemd services are active
           ansible.builtin.assert:
-            that: couchdb_service.status.ActiveState == 'active'
-            fail_msg: "couchdb.service is not active ({{ couchdb_service.status.ActiveState }})"
-            success_msg: "couchdb.service is active"
+            that: couchdb_services.results | map(attribute='status.ActiveState') | unique | list == ['active']
+            fail_msg: >-
+              Not every service is active:
+              {{ dict(couchdb_verify_units | zip(couchdb_services.results | map(attribute='status.ActiveState'))) }}
+            success_msg: "Every systemd service is active"
 
-        - name: Retrieve the CouchDB systemd service log for debugging
+        - name: Retrieve the CouchDB systemd services log for debugging
           when: couchdb_debug_service_enabled | bool
           ansible.builtin.command:
-            cmd: journalctl --no-pager --output=cat --unit=couchdb.service
+            cmd: "journalctl --no-pager --output=cat --unit={{ item }}"
           changed_when: false
+          loop: "{{ couchdb_verify_units }}"
 
         # The role is not included in this playbook, so its defaults are not in
         # scope. Reading defaults/main.yml directly ties the version assertion
@@ -344,7 +351,7 @@
         - name: Show the CouchDB verification summary
           ansible.builtin.debug:
             msg:
-              - "CouchDB systemd: {{ couchdb_service.status.ActiveState }}"
+              - "CouchDB systemd: {% for unit, state in couchdb_verify_units | zip(couchdb_services.results | map(attribute='status.ActiveState')) %}{{ unit }} ({{ state }}){% if not loop.last %}, {% endif %}{% endfor %}"
               - "CouchDB version: {{ couchdb_root_endpoint.json.version }}"
               - "CouchDB node UUID: {{ couchdb_root_endpoint.json.uuid }}"
               - "CouchDB databases: {{ couchdb_all_dbs.json | join(', ') }}"
