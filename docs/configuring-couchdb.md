@@ -107,7 +107,7 @@ Take a look at:
 
 - [`defaults/main.yml`](../defaults/main.yml) for some variables that you can customize via your `vars.yml` file.
 
-See the [documentation](https://docs.couchdb.org/en/stable/config/index.html) for a complete list of CouchDB's config options that you could put in `couchdb_config_extension`.
+See the [documentation](https://docs.couchdb.org/en/stable/config/index.html) for a complete list of CouchDB's config options that you can put in `couchdb_config_extension`.
 
 ## Installing
 
