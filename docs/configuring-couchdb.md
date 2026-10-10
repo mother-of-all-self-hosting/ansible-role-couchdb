@@ -46,7 +46,7 @@ couchdb_enabled: true
 ########################################################################
 ```
 
-### Specify server administrator's username and password
+### Set administrator's account details
 
 You also need to specify a server administrator's login credential by adding the following configuration to your `vars.yml` file:
 
