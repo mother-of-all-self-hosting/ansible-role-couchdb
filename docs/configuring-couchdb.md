@@ -48,13 +48,14 @@ couchdb_enabled: true
 
 ### Set administrator's account details
 
-You also need to specify a server administrator's login credential by adding the following configuration to your `vars.yml` file:
+You also need to specify administrator's account details by adding the following configuration to your `vars.yml` file:
 
 ```yaml
 couchdb_root_username: YOUR_ADMIN_USERNAME_HERE
-
 couchdb_root_password: YOUR_ADMIN_PASSWORD_HERE
 ```
+
+Generating a strong password (e.g. `pwgen -s 64 1`) is recommended for `couchdb_root_password`.
 
 >[!NOTE]
 > After installing the CouchDB it will be possible to create other administrator accounts on its web UI.
