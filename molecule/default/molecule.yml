@@ -47,7 +47,8 @@ provisioner:
         couchdb_hostname: localhost
         couchdb_container_labels_traefik_enabled: false
         couchdb_container_http_host_bind_port: 5984
-        couchdb_root_username: /#@mash-admin?%
+        # The second character of the username needs to be a letter, digit, or underscore.
+        couchdb_root_username: /1@mash-admin?%
         couchdb_root_password: /#@molecule-admin-password?%
 
         # Everything below is deliberately set to a value that differs from
