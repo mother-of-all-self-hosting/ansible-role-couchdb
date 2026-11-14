@@ -58,7 +58,9 @@ couchdb_root_password: YOUR_ADMIN_PASSWORD_HERE
 Generating a strong password (e.g. `pwgen -s 64 1`) is recommended for `couchdb_root_password`.
 
 >[!NOTE]
-> After installing the CouchDB it will be possible to create other administrator accounts on its web UI.
+>
+> - The service fails to start if the second character of the username is not a letter, digit, or underscore.
+> - After installing the CouchDB it will be possible to create other administrator accounts on its web UI.
 
 An administrator account is mandatory. CouchDB 3.x refuses to start without one (it no longer supports the old "Admin Party" mode, in which every request was treated as an administrator's), so the role fails early if neither `couchdb_root_username` + `couchdb_root_password` nor `couchdb_admins_custom` is set.
 

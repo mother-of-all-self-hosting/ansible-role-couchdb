@@ -40,7 +40,7 @@
     cmd: |-
       {{ devture_systemd_docker_base_host_command_docker }} exec
       {{ couchdb_identifier }}
-      curl -X PUT http://{{ couchdb_root_username }}:{{ couchdb_root_password }}@localhost:5984/{{ item.name }}
+      curl -X PUT http://{{ couchdb_root_username | urlencode | replace('/', '%2F') }}:{{ couchdb_root_password | urlencode | replace('/', '%2F') }}@localhost:5984/{{ item.name }}
   register: couchdb_tables_output
   until: couchdb_tables_output.stdout.find('{"ok":true}') != -1 or couchdb_tables_output.stdout.find('"file_exists"') != -1
   retries: 10
@@ -54,7 +54,7 @@
     cmd: |-
       {{ devture_systemd_docker_base_host_command_docker }} exec
       {{ couchdb_identifier }}
-      curl -X PUT http://{{ couchdb_root_username }}:{{ couchdb_root_password }}@localhost:5984/_users/org.couchdb.user:{{ item.name }}
+      curl -X PUT http://{{ couchdb_root_username | urlencode | replace('/', '%2F') }}:{{ couchdb_root_password | urlencode | replace('/', '%2F') }}@localhost:5984/_users/org.couchdb.user:{{ item.name }}
       -H 'Accept: application/json'
       -H 'Content-Type: application/json'
       -d '{{ item | to_json }}'
@@ -70,7 +70,7 @@
     cmd: |-
       {{ devture_systemd_docker_base_host_command_docker }} exec
       {{ couchdb_identifier }}
-      curl -X PUT http://{{ couchdb_root_username }}:{{ couchdb_root_password }}@localhost:5984/{{ item.name }}/_security
+      curl -X PUT http://{{ couchdb_root_username | urlencode | replace('/', '%2F') }}:{{ couchdb_root_password | urlencode | replace('/', '%2F') }}@localhost:5984/{{ item.name }}/_security
       -H "Accept: application/json"
       -H "Content-Type: application/json"
       -d '{{ item.permission | default(couchdb_default_permissions) | to_json }}'
