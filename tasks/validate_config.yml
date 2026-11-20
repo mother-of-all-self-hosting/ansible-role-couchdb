@@ -24,7 +24,6 @@
   with_items:
     - couchdb_uid
     - couchdb_gid
-    - couchdb_container_network
 
 # CouchDB 3.x removed "Admin Party" mode and its container image refuses to
 # start ("ERROR: CouchDB 3.0+ will no longer run in Admin Party mode") unless
